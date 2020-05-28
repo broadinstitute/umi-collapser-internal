@@ -119,7 +119,7 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
 
     synthetic_read_prefix = "synthetic_read_"
 
-    if (verbose and (total_reads is not None)):
+    if verbose and (total_reads is not None):
         show_pbar = True
     else:
         show_pbar = False
@@ -132,9 +132,11 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
                 input_record_count = input_record_count + 1
                 current_read_family = get_read_family(input_record)
                 if current_family == current_read_family:
+                    # Continue outputting the same family
                     current_family_size = current_family_size + 1
                     temp_bam.write(input_record)
                 else:
+                    # Next family starting copy and reset
                     if temp_bam is not None:
                         temp_bam.close()
                         if current_family_size > 1:
@@ -148,9 +150,9 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
                                 output_bam.write(first_read)
                         if not debug:
                             os.remove(temp_bam_filename)
+                    family_index = family_index + 1
                     temp_bam_filename = f'tmp/family_{family_index}.bam'
                     temp_bam = pysam.AlignmentFile(temp_bam_filename, 'wb', header=input_bam.header)
-                    family_index = family_index + 1
                     current_family_size = 1
                     current_family = current_read_family
                     temp_bam.write(input_record)
@@ -169,14 +171,13 @@ def call_base(query_sequences, query_qualities):
     return base_call, 'F', 'M'
 
 
-def call_consensus(output_bam, temp_bam_filename, new_read_name=None, temp_sorted_file = None):
-    if temp_sorted_file is None:
-        temp_sorted_file = "tmpsort"
+def call_consensus(output_bam, temp_bam_filename, new_read_name=None, temp_sorted_file=None):
+    assert temp_sorted_file is not None
+    assert new_read_name is not None
 
+    # sort and index the family file
     pysam.sort(temp_bam_filename, "-o", temp_sorted_file)
     pysam.index(temp_sorted_file)
-
-    assert new_read_name is not None
 
     with pysam.AlignmentFile(temp_sorted_file, "rb") as family_file:
         first_read = family_file.__next__()
@@ -209,11 +210,16 @@ def call_consensus(output_bam, temp_bam_filename, new_read_name=None, temp_sorte
     nr = pysam.AlignedSegment()
     nr.query_name = new_read_name
     nr.query_sequence = ''.join(new_read_sequence_list)
-    nr.flag = 99  # TODO
+    nr.flag = 0  # TODO
     nr.reference_id = reference_id
     nr.reference_start = first_pileup_position
-    nr.mapping_quality = 20
-    nr.cigarstring = ''.join(new_read_cigar_list)
+    nr.mapping_quality = 255
+    # TODO: Improve CIGAR String Handling
+    #newcigarstring_debug = ''.join(new_read_cigar_list)
+    #print(newcigarstring_debug)
+    #nr.cigarstring = ''.join(new_read_cigar_list)
+    n = len(new_read_cigar_list)
+    nr.cigarstring = f'{n}M'
     nr.query_qualities = pysam.qualitystring_to_array(''.join(new_read_quality_list))
     nr.tags = tags
 
@@ -242,7 +248,7 @@ def main():
 
 def main_nosort():
     # input_file = 'final.EBOV.bam'
-    output_file = 'output.bam'
+    output_file = 'output.unsorted.bam'
     verbose = True
 
     tag_sorted_tmp_filename = 'tag_sorted_tmp.bam'

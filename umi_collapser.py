@@ -49,7 +49,7 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
                                                       new_read_name=f'{synthetic_read_prefix}{family_index}',
                                                       temp_sorted_file= f'{temp_bam_filename}.sorted.bam')
                             if save_collapsed_read:
-                                with pysam.AlignmentFile(f'{save_collapsed_read_prefix}{family_index}', "wb",
+                                with pysam.AlignmentFile(f'{save_collapsed_read_prefix}{family_index}.bam', "wb",
                                                          header=input_bam.header) as family_collapsed_file:
                                     family_collapsed_file.write(new_read)
                             output_bam.write(new_read)

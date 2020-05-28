@@ -4,11 +4,13 @@ from statistics import (mode, StatisticsError)
 import os
 import sctools_imports
 
-BAM_CMATCH = 0 # M
-BAM_CREF_SKIP = 3 # N
+BAM_CMATCH = 0  # M
+BAM_CREF_SKIP = 3  # N
 
 
 def get_read_family(record):
+    # TODO: Add docstring
+    # TODO: Factor these out and make them CLI args
     tag_keys = ['XC', 'XM', 'gn']
     tag_values = [sctools_imports.get_tag_or_default(record, key, "") for key in tag_keys]
     return tag_values
@@ -18,6 +20,7 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
                              debug=False, synthetic_read_prefix="synthetic_read_",
                              family_temp_prefix="tmp/family_", save_collapsed_read=False,
                              save_collapsed_read_prefix="tmp/family_collapsed_"):
+    # TODO: reparametrise, allow to specify directory for temp files and prefixes
     current_family = None
     current_family_size = 0
     family_index = 0
@@ -55,6 +58,7 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
                             output_bam.write(new_read)
                         else:
                             # copy read
+                            # TODO: Optimise we don't need to re-open the file here
                             with pysam.AlignmentFile(temp_bam_filename, "rb") as family_file:
                                 first_read = family_file.__next__()
                                 output_bam.write(first_read)
@@ -74,13 +78,14 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
 
 
 def call_base(query_sequences, query_qualities):
-    # TODO: Improve calling model
+    # TODO: Resolve ties by looking at quality scores
     try:
         base_call = mode([x.upper() for x in query_sequences])
     except StatisticsError:
         base_call = 'N'
     # TODO: Calculate quality (max observed)
     quality = 'F'
+    # TODO: If base_call is '' return 'N' for cigar
     return base_call, quality, 'M'
 
 

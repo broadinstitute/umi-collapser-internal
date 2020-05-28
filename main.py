@@ -84,30 +84,64 @@ def call_consensus(output_bam, temp_bam_filename, new_read_name=None, temp_sorte
 
     with pysam.AlignmentFile(temp_sorted_file, "rb") as family_file:
         first_read = family_file.__next__()
-        # reference_name = first_read.reference_name
         reference_id = first_read.reference_id
         tags = first_read.get_tags(with_value_type=True)
 
     new_read_sequence_list = []
     new_read_quality_list = []
-    new_read_cigar_list = []
+    new_read_cigar_tuple_list = []
+
+    # M BAM_CMATCH 0
+    cigar_last = 0
+    cigar_last_count = 0
+
+    last_pileup_position = None
+
+    # TODO: Handle splice alignments
 
     first_pileup_position = None
     with pysam.AlignmentFile(temp_sorted_file, "rb") as family_file:
         for pileupcolumn in family_file.pileup():
             pos = pileupcolumn.pos
-            qs = pileupcolumn.get_query_sequences()
-            qq = pileupcolumn.get_query_qualities()
 
             if first_pileup_position is None:
                 first_pileup_position = pos
+                last_pileup_position = pos - 1;
+
+
+            position_delta = pos - last_pileup_position
+            if position_delta > 1:
+                # We have a gap
+                # Terminate previous cigar entry
+                new_read_cigar_tuple_list.append((cigar_last, cigar_last_count))
+                # N BAM_CREF_SKIP 3
+                new_read_cigar_tuple_list.append((3, position_delta - 1))
+                cigar_last = 3
+                cigar_last_count = position_delta
+
+            qs = pileupcolumn.get_query_sequences()
+            qq = pileupcolumn.get_query_qualities()
 
             called_base, called_quality, called_cigar = call_base(qs, qq)
 
+            if called_base is None or called_base == "":
+                called_base = "N"
+
+
             new_read_sequence_list.append(called_base)
             new_read_quality_list.append(called_quality)
-            new_read_cigar_list.append(called_cigar)
 
+            # M BAM_CMATCH 0
+            if cigar_last == 0:
+                cigar_last_count += 1
+            else:
+                cigar_last = 0
+                cigar_last_count = 1
+
+            last_pileup_position = pos
+
+        # append the final cigar tuple
+        new_read_cigar_tuple_list.append((cigar_last, cigar_last_count))
 
     # Construct new AlignedSegment
     nr = pysam.AlignedSegment()
@@ -117,13 +151,18 @@ def call_consensus(output_bam, temp_bam_filename, new_read_name=None, temp_sorte
     nr.reference_id = reference_id
     nr.reference_start = first_pileup_position
     nr.mapping_quality = 255
-    # TODO: Improve CIGAR String Handling
-    #newcigarstring_debug = ''.join(new_read_cigar_list)
-    #print(newcigarstring_debug)
-    #nr.cigarstring = ''.join(new_read_cigar_list)
-    n = len(new_read_cigar_list)
-    nr.cigarstring = f'{n}M'
-    nr.query_qualities = pysam.qualitystring_to_array(''.join(new_read_quality_list))
+    print()
+    print(new_read_name)
+    print(nr.query_sequence)
+    print(len(nr.query_sequence))
+    print(new_read_cigar_tuple_list)
+    quality_string = ''.join(new_read_quality_list)
+    print(quality_string)
+    quality_array = pysam.qualitystring_to_array(quality_string)
+    print(quality_array)
+
+    nr.cigartuples = new_read_cigar_tuple_list
+    nr.query_qualities = quality_array
     nr.tags = tags
 
     # Write it to the output file

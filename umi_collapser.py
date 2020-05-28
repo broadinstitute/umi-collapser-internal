@@ -41,7 +41,7 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
                     current_family_size = current_family_size + 1
                     temp_bam.write(input_record)
                 else:
-                    # next family
+                    # next family -- this can be a separate thread
                     if temp_bam is not None:
                         temp_bam.close()
                         if current_family_size > 1:
@@ -162,7 +162,6 @@ def call_consensus(temp_bam_filename, new_read_name=None, temp_sorted_file=None,
     nr = pysam.AlignedSegment()
     nr.query_name = new_read_name
     nr.query_sequence = ''.join(new_read_sequence_list)
-    # TODO: Set the flags correctly
     nr.flag = 0
     nr.reference_id = reference_id
     nr.reference_start = first_pileup_position

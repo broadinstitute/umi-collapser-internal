@@ -193,7 +193,7 @@ def umi_collapse(input_file, output_file, verbose=False, input_is_sorted=False, 
 
     if not input_is_sorted:
         print('Sorting input bam file...')
-        total_number_of_reads = tag_sort_bam(input_file, tag_sorted_tmp_filename, ['XC', 'XM', 'gn'])
+        total_number_of_reads = sctools_imports.tag_sort_bam(input_file, tag_sorted_tmp_filename, ['XC', 'XM', 'gn'])
         sorted_input_filename = tag_sorted_tmp_filename
     else:
         print('Counting input reads...')

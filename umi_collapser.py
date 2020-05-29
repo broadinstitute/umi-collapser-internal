@@ -48,6 +48,7 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
                     if temp_bam is not None:
                         temp_bam.close()
                         if current_family_size > 1:
+                            # TODO: this could go on separate process
                             new_read = call_consensus(temp_bam_filename,
                                                       new_read_name=f'{synthetic_read_prefix}{family_index}',
                                                       temp_sorted_file= f'{temp_bam_filename}.sorted.bam')
@@ -187,9 +188,8 @@ def call_consensus(temp_bam_filename, new_read_name=None, temp_sorted_file=None,
     return nr
 
 
-def umi_collapse(input_file, output_file, verbose=False, input_is_sorted=False, debug=False):
-    # TODO: Allow custom temp location and filename
-    tag_sorted_tmp_filename = 'tag_sorted_tmp.bam'
+def umi_collapse(input_file: str, output_file: str, verbose:bool =False, input_is_sorted:bool=False,
+                 debug:bool=False, tag_sorted_tmp_filename:str = 'tag_sorted_tmp.bam'):
 
     if not input_is_sorted:
         print('Sorting input bam file...')

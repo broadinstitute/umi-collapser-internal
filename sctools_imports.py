@@ -86,7 +86,7 @@ def sort_reads_by_tags_and_query_name(
     return aligned_segments
 
 
-def tag_sort_bam(input_bam_filename, output_bam_filename, tags):
+def tag_sort_bam(input_bam_filename: str, output_bam_filename: str, tags):
     number_of_reads = 0
     with pysam.AlignmentFile(input_bam_filename, "rb") as f:
         header = f.header

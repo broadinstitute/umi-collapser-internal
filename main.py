@@ -2,7 +2,7 @@ import argparse
 import umi_collapser
 
 
-def main():
+def main() -> int:
     description = "Collapse reads from the same Gene, UMI, Cell Barcode Triplet"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-i', "--input_bam", required=True,help="input bamfile")

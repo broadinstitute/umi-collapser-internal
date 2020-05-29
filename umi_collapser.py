@@ -89,43 +89,11 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                         if temp_bam_forward is not None:
                             temp_bam_forward.close()
                             temp_bam_reverse.close()
-                            if current_family_size > 1:
-                                if current_family_forward_size >= current_family_reverse_size:
-                                    new_read = call_consensus(temp_bam_filename_forward,
-                                                              new_read_name=f'{synthetic_read_prefix}{family_index}',
-                                                              temp_sorted_filename=f'{temp_bam_filename_forward}'
-                                                              f'.sorted.bam')
-                                    output_bam.write(new_read)
-                                else:
-                                    new_read = call_consensus(temp_bam_filename_reverse,
-                                                              new_read_name=f'{synthetic_read_prefix}{family_index}',
-                                                              temp_sorted_filename=f'{temp_bam_filename_forward}'
-                                                              f'.sorted.bam')
-                                    output_bam.write(new_read)
-                            else:
-                                if current_family_forward_size == 1:
-                                    # copy read, could cache last read and avoid re-opening file
-                                    with pysam.AlignmentFile(temp_bam_filename_forward, "rb") as family_file:
-                                        first_read = family_file.__next__()
-                                        output_bam.write(first_read)
-                                else:
-                                    # copy read, could cache last read and avoid re-opening file
-                                    with pysam.AlignmentFile(temp_bam_filename_reverse, "rb") as family_file:
-                                        first_read = family_file.__next__()
-                                        output_bam.write(first_read)
-                            if debug:
-                                # save information about specific families
-                                if family_index in debug_family_ids:
-                                    # save information about this family in the target location
-                                    copyfile(temp_bam_filename_forward, f"{debug_family_location}/"
-                                             f"{family_file_prefix}{family_index}_F.bam")
-                                    copyfile(temp_bam_filename_reverse, f"{debug_family_location}/"
-                                             f"{family_file_prefix}{family_index}_R.bam")
-                                    collapsed_read_bam_filename = f"{debug_family_location}" + \
-                                                                  f"{family_file_prefix}{family_index}_collapsed.bam"
-                                    with pysam.AlignmentFile(collapsed_read_bam_filename,
-                                                             "wb", header=input_bam.header) as collapsed_read_bam:
-                                        collapsed_read_bam.write(new_read)
+                            call_family_consensus(current_family_forward_size, current_family_reverse_size,
+                                                  current_family_size, debug, debug_family_ids, debug_family_location,
+                                                  family_file_prefix, family_index, input_bam, output_bam,
+                                                  synthetic_read_prefix, temp_bam_filename_forward,
+                                                  temp_bam_filename_reverse)
                             # Cleanup
                             os.remove(temp_bam_filename_forward)
                             os.remove(temp_bam_filename_reverse)
@@ -150,7 +118,71 @@ def umi_collapse_sorted_file(input_bam_filename: str,
             if temp_bam_forward is not None:
                 temp_bam_forward.close()
                 temp_bam_reverse.close()
-                # TODO: Call final family
+                call_family_consensus(current_family_forward_size, current_family_reverse_size,
+                                      current_family_size, debug, debug_family_ids, debug_family_location,
+                                      family_file_prefix, family_index, input_bam, output_bam,
+                                      synthetic_read_prefix, temp_bam_filename_forward,
+                                      temp_bam_filename_reverse)
+
+
+def call_family_consensus(current_family_forward_size, current_family_reverse_size, current_family_size, debug,
+                          debug_family_ids, debug_family_location, family_file_prefix, family_index, input_bam,
+                          output_bam, synthetic_read_prefix, temp_bam_filename_forward, temp_bam_filename_reverse):
+    if current_family_size > 1:
+        if current_family_forward_size >= current_family_reverse_size:
+            new_read = call_consensus(temp_bam_filename_forward,
+                                      new_read_name=f'{synthetic_read_prefix}{family_index}',
+                                      temp_sorted_filename=f'{temp_bam_filename_forward}'
+                                      f'.sorted.bam')
+            output_bam.write(new_read)
+        else:
+            new_read = call_consensus(temp_bam_filename_reverse,
+                                      new_read_name=f'{synthetic_read_prefix}{family_index}',
+                                      temp_sorted_filename=f'{temp_bam_filename_forward}'
+                                      f'.sorted.bam')
+            output_bam.write(new_read)
+    else:
+        if current_family_forward_size == 1:
+            # copy read, could cache last read and avoid re-opening file
+            with pysam.AlignmentFile(temp_bam_filename_forward, "rb") as family_file:
+                first_read = family_file.__next__()
+                output_bam.write(first_read)
+        else:
+            # copy read, could cache last read and avoid re-opening file
+            with pysam.AlignmentFile(temp_bam_filename_reverse, "rb") as family_file:
+                first_read = family_file.__next__()
+                output_bam.write(first_read)
+    if debug:
+        # save information about specific families
+        if family_index in debug_family_ids:
+            save_family_debug(debug_family_location, family_file_prefix, family_index,
+                              input_bam, new_read, temp_bam_filename_forward,
+                              temp_bam_filename_reverse)
+
+
+def save_family_debug(debug_family_location, family_file_prefix, family_index, input_bam, new_read,
+                      temp_bam_filename_forward, temp_bam_filename_reverse) -> None:
+    """
+    Save debug information for family
+    :param debug_family_location: location where to save the files
+    :param family_file_prefix: prefix for files to save
+    :param family_index: family index number
+    :param input_bam: input bam file
+    :param new_read: read to write in output for this family
+    :param temp_bam_filename_forward: file name for forward reads in this family
+    :param temp_bam_filename_reverse: file name for reverse reads in this family
+    :return: None
+    """
+    # save information about this family in the target location
+    copyfile(temp_bam_filename_forward, f"{debug_family_location}/"
+    f"{family_file_prefix}{family_index}_F.bam")
+    copyfile(temp_bam_filename_reverse, f"{debug_family_location}/"
+    f"{family_file_prefix}{family_index}_R.bam")
+    collapsed_read_bam_filename = f"{debug_family_location}" + \
+                                  f"{family_file_prefix}{family_index}_collapsed.bam"
+    with pysam.AlignmentFile(collapsed_read_bam_filename,
+                             "wb", header=input_bam.header) as collapsed_read_bam:
+        collapsed_read_bam.write(new_read)
 
 
 def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[str]:

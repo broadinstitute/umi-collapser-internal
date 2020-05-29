@@ -106,6 +106,7 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
     """
     if len(query_sequences) == 0:
         return ['', 'F', 'M']
+        # TODO: Don't output quality, fix CIGAR
     else:
         query_sequences_upper = [x.upper() for x in query_sequences]
         base_frequencies = Counter(query_sequences_upper)
@@ -113,25 +114,37 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
         most_common_base = most_common[0]
         most_common_freq = most_common[1]
         tie_exists = False
+
+        # Find if tie exists
         for x in base_frequencies:
             if x != most_common_base and base_frequencies[x] == most_common_freq:
                 tie_exists = True
                 break
+
         if not tie_exists:
             base_call = most_common[0]
+            # TODO: Calculate quality
         else:
-            tied_bases = [x for x in base_frequencies if base_frequencies[x] == most_common_freq ]
+            # Find which bases tie
+            tied_bases = [x for x in base_frequencies if base_frequencies[x] == most_common_freq]
             tied_total_qualities = list()
+
+            # Get total score for each tied base
             for tb in tied_bases:
                 select_vector = [qs == tb for qs in query_sequences_upper]
                 current_tied_base_qualities = list(compress(query_qualities, select_vector))
                 tied_total_qualities.append((tb, sum(current_tied_base_qualities)))
-            max_quality = max([x[1] for x in tied_total_qualities ])
-            if sum([x[1] == max_quality for x in tied_total_qualities ]) == 1:
-                base_call = [x[0] for x in tied_total_qualities if x[1] == max_quality ][0]
+
+            # Find if a base with maximal score exists
+            max_quality = max([x[1] for x in tied_total_qualities])
+            if sum([x[1] == max_quality for x in tied_total_qualities]) == 1:
+                base_call = [x[0] for x in tied_total_qualities if x[1] == max_quality][0]
+                # TODO: Calculate quality
             else:
                 # qualities tie, can't call base
                 base_call = 'N'
+                # TODO: Output minimal quality
+
         return [base_call, 'F', 'M']
 
 

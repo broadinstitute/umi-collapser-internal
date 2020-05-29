@@ -3,23 +3,34 @@ import tqdm
 from statistics import (mode, StatisticsError)
 import os
 import sctools_imports
+from typing import (List, Any)
 
 BAM_CMATCH = 0  # M
 BAM_CREF_SKIP = 3  # N
 
 
-def get_read_family(record):
-    # TODO: Add docstring
-    # TODO: Factor these out and make them CLI args
-    tag_keys = ['XC', 'XM', 'gn']
+def get_read_family(record: pysam.AlignedSegment, tag_keys: List[str]) -> List[Any]:
+    """Return a list of tag values that define which family this read belongs to
+
+    Parameters
+    ----------
+    record : pysam.AlignedSegment
+        the read to the get family of
+    tag_keys : List[str]
+        list of tag name strings
+
+    """
     tag_values = [sctools_imports.get_tag_or_default(record, key, "") for key in tag_keys]
     return tag_values
 
 
-def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=False, total_reads=None,
-                             debug=False, synthetic_read_prefix="synthetic_read_",
-                             family_temp_prefix="tmp/family_", save_collapsed_read=False,
-                             save_collapsed_read_prefix="tmp/family_collapsed_"):
+def umi_collapse_sorted_file(input_bam_filename: str, output_bam_filename: str, family_tag_keys: List[str],
+                             verbose: bool = False,
+                             total_reads: bool = None, debug: bool = False,
+                             synthetic_read_prefix: str = "synthetic_read_",
+                             family_temp_prefix: str = "tmp/family_", save_collapsed_read: bool = False,
+                             save_collapsed_read_prefix: str = "tmp/family_collapsed_",
+                             ):
     # TODO: reparametrise, allow to specify directory for temp files and prefixes
     current_family = None
     current_family_size = 0
@@ -38,20 +49,19 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
                 pbar = tqdm.tqdm(total=total_reads)
             for input_record in input_bam:
                 input_record_count = input_record_count + 1
-                current_read_family = get_read_family(input_record)
+                current_read_family = get_read_family(input_record, family_tag_keys)
                 if current_family == current_read_family:
                     # same family
                     current_family_size = current_family_size + 1
                     temp_bam.write(input_record)
                 else:
-                    # next family -- this can be a separate thread
+                    # next family
                     if temp_bam is not None:
                         temp_bam.close()
                         if current_family_size > 1:
-                            # TODO: this could go on separate process
                             new_read = call_consensus(temp_bam_filename,
                                                       new_read_name=f'{synthetic_read_prefix}{family_index}',
-                                                      temp_sorted_file= f'{temp_bam_filename}.sorted.bam')
+                                                      temp_sorted_filename=f'{temp_bam_filename}.sorted.bam')
                             if save_collapsed_read:
                                 with pysam.AlignmentFile(f'{save_collapsed_read_prefix}{family_index}.bam', "wb",
                                                          header=input_bam.header) as family_collapsed_file:
@@ -59,7 +69,6 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
                             output_bam.write(new_read)
                         else:
                             # copy read
-                            # TODO: Optimise we don't need to re-open the file here
                             with pysam.AlignmentFile(temp_bam_filename, "rb") as family_file:
                                 first_read = family_file.__next__()
                                 output_bam.write(first_read)
@@ -78,7 +87,13 @@ def umi_collapse_sorted_file(input_bam_filename, output_bam_filename, verbose=Fa
                 temp_bam.close()
 
 
-def call_base(query_sequences, query_qualities):
+def call_base(query_sequences: List[str], query_qualities:List[int]) -> List[str, str, str]:
+    """
+    call a base based on the query sequences and query qualities
+    :param query_sequences: base calls from pileup for given position
+    :param query_qualities: base qualities from pileup for given position
+    :return: list with base call, quality and cigar string
+    """
     # TODO: Resolve ties by looking at quality scores
     try:
         base_call = mode([x.upper() for x in query_sequences])
@@ -90,16 +105,26 @@ def call_base(query_sequences, query_qualities):
     return base_call, quality, 'M'
 
 
-def call_consensus(temp_bam_filename, new_read_name=None, temp_sorted_file=None,
-                   max_depth=10000, debug=False):
-    assert temp_sorted_file is not None
+def call_consensus(temp_bam_filename: str, new_read_name: str = None, temp_sorted_filename: str = None,
+                   max_depth: int = 10000, debug: bool = False) -> pysam.AlignedSegment:
+    """
+    call a consensus read from a read family file
+    :param temp_bam_filename: name of file containing the family reads
+    :param new_read_name: name of new read
+    :param temp_sorted_filename: name of temporary file in which to store family reads
+    :param max_depth: max depth parameter for pileup
+    :param debug: debug mode
+    :return: consensus read
+    """
+
+    assert temp_sorted_filename is not None
     assert new_read_name is not None
 
     # sort and index the family file
-    pysam.sort(temp_bam_filename, "-o", temp_sorted_file)
-    pysam.index(temp_sorted_file)
+    pysam.sort(temp_bam_filename, "-o", temp_sorted_filename)
+    pysam.index(temp_sorted_filename)
 
-    with pysam.AlignmentFile(temp_sorted_file, "rb") as family_file:
+    with pysam.AlignmentFile(temp_sorted_filename, "rb") as family_file:
         first_read = family_file.__next__()
         reference_id = first_read.reference_id
         tags = first_read.get_tags(with_value_type=True)
@@ -114,7 +139,7 @@ def call_consensus(temp_bam_filename, new_read_name=None, temp_sorted_file=None,
     last_pileup_position = None
 
     first_pileup_position = None
-    with pysam.AlignmentFile(temp_sorted_file, "rb") as family_file:
+    with pysam.AlignmentFile(temp_sorted_filename, "rb") as family_file:
         for pileupcolumn in family_file.pileup(stepper="nofilter", max_depth=max_depth):
             pos = pileupcolumn.pos
 
@@ -177,35 +202,57 @@ def call_consensus(temp_bam_filename, new_read_name=None, temp_sorted_file=None,
     nr.tags = tags
 
     if debug:
-        print('---')
-        print(new_read_name)
-        print(nr.query_sequence)
-        print(len(nr.query_sequence))
-        print(new_read_cigar_tuple_list)
-        print(quality_string)
-        print(quality_array)
+        print('--- DEBUG INFORMATION ---')
+        print(f'new_read_name: {new_read_name}')
+        print(f'query_sequence: {nr.query_sequence}')
+        print(f'length of query: {len(nr.query_sequence)}')
+        print(f'cigar tuples: {new_read_cigar_tuple_list}')
+        print(f'quality string: {quality_string}')
+        print(f'quality array: {quality_array}')
 
     return nr
 
 
-def umi_collapse(input_file: str, output_file: str, verbose:bool =False, input_is_sorted:bool=False,
-                 debug:bool=False, tag_sorted_tmp_filename:str = 'tag_sorted_tmp.bam'):
+def umi_collapse(input_file: str, output_file: str, verbose: bool = False, input_is_sorted: bool = False,
+                 debug: bool = False, tag_sorted_tmp_filename: str = 'tag_sorted_tmp.bam',
+                 cell_barcode_tag: str = "XC", molecular_barcode_tag: str = "XM", gene_tag: str = "gn") -> None:
+    """
+
+    :param input_file: input bam file
+    :param output_file: output bam file
+    :param verbose: specify verbosity
+    :param input_is_sorted: specify if the input bam is already sorted
+    :param debug: debug flag
+    :param tag_sorted_tmp_filename: name of temporary file for sorting into
+    :param cell_barcode_tag: tag name for the cell barcode
+    :param molecular_barcode_tag: tag name for the molecular barcode
+    :param gene_tag: tag name for the gene tag
+    :return: None
+    """
+    tag_ordering = [cell_barcode_tag, molecular_barcode_tag, gene_tag]
 
     if not input_is_sorted:
         print('Sorting input bam file...')
-        total_number_of_reads = sctools_imports.tag_sort_bam(input_file, tag_sorted_tmp_filename, ['XC', 'XM', 'gn'])
+        total_number_of_reads = sctools_imports.tag_sort_bam(input_file,
+                                                             tag_sorted_tmp_filename,
+                                                             tag_ordering)
         sorted_input_filename = tag_sorted_tmp_filename
     else:
         print('Counting input reads...')
         total_number_of_reads = int(pysam.view('-c', input_file).rstrip())
         sorted_input_filename = input_file
 
-    # Do the collapse
     print('Collapsing reads...')
-    umi_collapse_sorted_file(sorted_input_filename, output_file, verbose=verbose,
-                             total_reads=total_number_of_reads, debug=debug,
-                             save_collapsed_read=True)
+    umi_collapse_sorted_file(input_bam_filename=sorted_input_filename,
+                             output_bam_filename=output_file,
+                             family_tag_keys=tag_ordering,
+                             verbose=verbose,
+                             total_reads=total_number_of_reads,
+                             debug=debug,
+                             save_collapsed_read=debug)
 
     print('Cleaning up...')
     if not input_is_sorted and not debug:
         os.remove(tag_sorted_tmp_filename)
+
+    return None

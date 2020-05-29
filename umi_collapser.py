@@ -32,7 +32,7 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                              synthetic_read_prefix: str = "synthetic_read_",
                              debug: bool = False,
                              debug_family_ids: List[int] = None,
-                             debug_family_location: List[str] = None,
+                             debug_family_location: str = None,
                              ) -> None:
     """
     Perform family collapsing on a file that has been sorted
@@ -43,6 +43,8 @@ def umi_collapse_sorted_file(input_bam_filename: str,
     :param total_reads: total number of reads in the file
     :param debug: debug flag
     :param synthetic_read_prefix: prefix for new reads
+    :param debug_family_ids: list of ids of families to save for debug purposes
+    :param debug_family_location: location where to save debug files
     :return: None
     """
 
@@ -299,6 +301,7 @@ def call_consensus(family_bam: str,
     first_pileup_position = None
     with pysam.AlignmentFile(temp_sorted_filename, "rb") as family_file:
         for pileup_column in family_file.pileup(stepper="nofilter", max_depth=max_depth, min_base_quality=0):
+        #for pileup_column in family_file.pileup(stepper="nofilter", max_depth=max_depth):
             pos = pileup_column.pos
 
             if first_pileup_position is None:
@@ -309,12 +312,13 @@ def call_consensus(family_bam: str,
             if position_delta > 1:
                 # We have a gap
                 if cigar_last == BAM_CREF_SKIP:
-                    cigar_last_count += 1
+                    # If we are already in a gap extend it
+                    cigar_last_count += position_delta - 1
                 else:
+                    # If we are not in a gap close the previous segment and start a new
                     new_read_cigar_tuple_list.append((cigar_last, cigar_last_count))
-                    new_read_cigar_tuple_list.append((BAM_CREF_SKIP, position_delta - 1))
                     cigar_last = BAM_CREF_SKIP
-                    cigar_last_count = position_delta
+                    cigar_last_count = position_delta - 1
 
             query_sequences = pileup_column.get_query_sequences()
             query_qualities = pileup_column.get_query_qualities()
@@ -322,23 +326,28 @@ def call_consensus(family_bam: str,
             called_base, called_quality, called_cigar = call_base(query_sequences, query_qualities)
 
             if called_cigar == BAM_CREF_SKIP:
+                # No base could be called and we have a single skip
                 if cigar_last == BAM_CREF_SKIP:
+                    # If we are already in a skip extend it
                     cigar_last_count += 1
                 else:
+                    # otherwise close previous segment and start a skip
                     new_read_cigar_tuple_list.append((cigar_last, cigar_last_count))
-                    new_read_cigar_tuple_list.append((BAM_CREF_SKIP, position_delta - 1))
                     cigar_last = BAM_CREF_SKIP
-                    cigar_last_count = position_delta
+                    cigar_last_count = 1
             else:
+                # we have a base call
                 new_read_sequence_list.append(called_base)
                 new_read_quality_list.append(called_quality)
 
                 if cigar_last == BAM_CMATCH:
                     cigar_last_count += 1
                 else:
+                    new_read_cigar_tuple_list.append((cigar_last, cigar_last_count))
                     cigar_last = BAM_CMATCH
                     cigar_last_count = 1
 
+            # update the last position for which we got a pileup
             last_pileup_position = pos
 
         # append the final cigar tuple

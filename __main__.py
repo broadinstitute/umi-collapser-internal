@@ -1,6 +1,8 @@
 import argparse
 import umi_collapser
 
+import debug_code
+
 
 def main() -> int:
     description = "Collapse reads from the same Gene, UMI, Cell Barcode Triplet"
@@ -28,4 +30,6 @@ def main() -> int:
 
 if __name__ == "__main__":
     main()
+    #debug_code.debug_single_family(family_bam="/Users/barkasn/Desktop/debug_1/family_87617_F.bam",
+    #                               output="/Users/barkasn/Desktop/debug/family_87617_F_consensus.bam")
 

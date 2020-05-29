@@ -127,7 +127,24 @@ def umi_collapse_sorted_file(input_bam_filename: str,
 
 def call_family_consensus(current_family_forward_size, current_family_reverse_size, current_family_size, debug,
                           debug_family_ids, debug_family_location, family_file_prefix, family_index, input_bam,
-                          output_bam, synthetic_read_prefix, temp_bam_filename_forward, temp_bam_filename_reverse):
+                          output_bam, synthetic_read_prefix, temp_bam_filename_forward, temp_bam_filename_reverse) -> None:
+    """
+    Call consensus read for family selecting if forward or reverse orientation should be used
+    :param current_family_forward_size:
+    :param current_family_reverse_size:
+    :param current_family_size:
+    :param debug:
+    :param debug_family_ids:
+    :param debug_family_location:
+    :param family_file_prefix:
+    :param family_index:
+    :param input_bam:
+    :param output_bam:
+    :param synthetic_read_prefix:
+    :param temp_bam_filename_forward:
+    :param temp_bam_filename_reverse:
+    :return: None
+    """
     if current_family_size > 1:
         if current_family_forward_size >= current_family_reverse_size:
             new_read = call_consensus(temp_bam_filename_forward,

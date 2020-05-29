@@ -5,6 +5,8 @@ import os
 import sctools_imports
 from typing import (List, Any)
 import tempfile
+from collections import Counter
+from itertools import compress
 
 # CIGAR String constants
 BAM_CMATCH = 0  # M
@@ -102,15 +104,35 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
     :param query_qualities: base qualities from pileup for given position
     :return: list with base call, quality and cigar string
     """
-    # TODO: Resolve ties by looking at quality scores
-    try:
-        base_call = str(mode([x.upper() for x in query_sequences]))
-    except StatisticsError:
-        base_call = 'N'
-    # TODO: Calculate quality (max observed)
-    quality = 'F'
-    # TODO: If base_call is '' return 'N' for cigar
-    return [base_call, quality, 'M']
+    if len(query_sequences) == 0:
+        return ['', 'F', 'M']
+    else:
+        query_sequences_upper = [x.upper() for x in query_sequences]
+        base_frequencies = Counter(query_sequences_upper)
+        most_common = base_frequencies.most_common(1)[0]
+        most_common_base = most_common[0]
+        most_common_freq = most_common[1]
+        tie_exists = False
+        for x in base_frequencies:
+            if x != most_common_base and base_frequencies[x] == most_common_freq:
+                tie_exists = True
+                break
+        if not tie_exists:
+            base_call = most_common[0]
+        else:
+            tied_bases = [x for x in base_frequencies if base_frequencies[x] == most_common_freq ]
+            tied_total_qualities = list()
+            for tb in tied_bases:
+                select_vector = [qs == tb for qs in query_sequences_upper]
+                current_tied_base_qualities = list(compress(query_qualities, select_vector))
+                tied_total_qualities.append((tb, sum(current_tied_base_qualities)))
+            max_quality = max([x[1] for x in tied_total_qualities ])
+            if sum([x[1] == max_quality for x in tied_total_qualities ]) == 1:
+                base_call = [x[0] for x in tied_total_qualities if x[1] == max_quality ][0]
+            else:
+                # qualities tie, can't call base
+                base_call = 'N'
+        return [base_call, 'F', 'M']
 
 
 def call_consensus(temp_bam_filename: str, new_read_name: str = None, temp_sorted_filename: str = None,

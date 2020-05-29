@@ -1,12 +1,12 @@
 import pysam
 import tqdm
-from statistics import (mode, StatisticsError)
 import os
 import sctools_imports
 from typing import (List, Any)
 import tempfile
 from collections import Counter
 from itertools import compress
+from shutil import copyfile
 
 # CIGAR String constants
 BAM_CMATCH = 0  # M
@@ -31,6 +31,8 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                              total_reads: bool = None,
                              synthetic_read_prefix: str = "synthetic_read_",
                              debug: bool = False,
+                             debug_family_ids: List[int] = None,
+                             debug_family_location: List[str] = None,
                              ) -> None:
     """
     Perform family collapsing on a file that has been sorted
@@ -43,12 +45,20 @@ def umi_collapse_sorted_file(input_bam_filename: str,
     :param synthetic_read_prefix: prefix for new reads
     :return: None
     """
+
+    # DEBUG
+    debug = True
+    debug_family_ids = [87617]
+    debug_family_location = "/Users/barkasn/Desktop/debug/"
+
     current_family = None
     current_family_size = 0
+    current_family_forward_size = 0
+    current_family_reverse_size = 0
     family_index = 0
     input_record_count = 0
-    temp_bam_filename = None
-    temp_bam = None
+    temp_bam_filename_forward = None
+    temp_bam_forward = None
     family_file_prefix = "family_"
 
     with tempfile.TemporaryDirectory() as temp_directory_name:
@@ -65,36 +75,80 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                     input_record_count = input_record_count + 1
                     current_read_family = get_read_family(input_record, family_tag_keys)
                     if current_family == current_read_family:
+                        if input_record.is_reverse:
+                            temp_bam_reverse.write(input_record)
+                            current_family_reverse_size += 1
+                        else:
+                            temp_bam_forward.write(input_record)
+                            current_family_forward_size += 1
                         # same family
-                        current_family_size = current_family_size + 1
-                        temp_bam.write(input_record)
+                        current_family_size += 1
+                        temp_bam_forward.write(input_record)
                     else:
                         # next family
-                        if temp_bam is not None:
-                            temp_bam.close()
+                        if temp_bam_forward is not None:
+                            temp_bam_forward.close()
+                            temp_bam_reverse.close()
                             if current_family_size > 1:
-                                new_read = call_consensus(temp_bam_filename,
-                                                          new_read_name=f'{synthetic_read_prefix}{family_index}',
-                                                          temp_sorted_filename=f'{temp_bam_filename}.sorted.bam')
-                                output_bam.write(new_read)
+                                if current_family_forward_size >= current_family_reverse_size:
+                                    new_read = call_consensus(temp_bam_filename_forward,
+                                                              new_read_name=f'{synthetic_read_prefix}{family_index}',
+                                                              temp_sorted_filename=f'{temp_bam_filename_forward}'
+                                                              f'.sorted.bam')
+                                    output_bam.write(new_read)
+                                else:
+                                    new_read = call_consensus(temp_bam_filename_reverse,
+                                                              new_read_name=f'{synthetic_read_prefix}{family_index}',
+                                                              temp_sorted_filename=f'{temp_bam_filename_forward}'
+                                                              f'.sorted.bam')
+                                    output_bam.write(new_read)
                             else:
-                                # copy read, could cache last read and avoid re-openning file
-                                with pysam.AlignmentFile(temp_bam_filename, "rb") as family_file:
-                                    first_read = family_file.__next__()
-                                    output_bam.write(first_read)
-                            if not debug:
-                                os.remove(temp_bam_filename)
-                        family_index = family_index + 1
-                        # create new bam for this family
-                        temp_bam_filename = f'{temp_directory_name}/{family_file_prefix}{family_index}.bam'
-                        temp_bam = pysam.AlignmentFile(temp_bam_filename, 'wb', header=input_bam.header)
-                        current_family = current_read_family
-                        temp_bam.write(input_record)
-                        current_family_size = 1
-                    if show_progress_bar:
-                        pbar.update(1)
-                if temp_bam is not None:
-                    temp_bam.close()
+                                if current_family_forward_size == 1:
+                                    # copy read, could cache last read and avoid re-openning file
+                                    with pysam.AlignmentFile(temp_bam_filename_forward, "rb") as family_file:
+                                        first_read = family_file.__next__()
+                                        output_bam.write(first_read)
+                                else:
+                                    # copy read, could cache last read and avoid re-openning file
+                                    with pysam.AlignmentFile(temp_bam_filename_reverse, "rb") as family_file:
+                                        first_read = family_file.__next__()
+                                        output_bam.write(first_read)
+                            if debug:
+                                # save information about specific families
+                                if family_index in debug_family_ids:
+                                    # save information about this family in the target location
+                                    copyfile(temp_bam_filename_forward, f"{debug_family_location}/"
+                                             f"{family_file_prefix}{family_index}_F.bam")
+                                    copyfile(temp_bam_filename_reverse, f"{debug_family_location}/"
+                                             f"{family_file_prefix}{family_index}_R.bam")
+                                    collapsed_read_bam_filename = f"{debug_family_location}" + \
+                                                                  f"{family_file_prefix}{family_index}_collapsed.bam"
+                                    with pysam.AlignmentFile(collapsed_read_bam_filename,
+                                                             "wb", header=input_bam.header) as collapsed_read_bam:
+                                        collapsed_read_bam.write(new_read)
+                        # Cleanup
+                        os.remove(temp_bam_filename_forward)
+                        os.remove(temp_bam_filename_reverse)
+                    family_index = family_index + 1
+                    # create new bam for this family
+                    temp_bam_filename_forward = f'{temp_directory_name}/{family_file_prefix}{family_index}_F.bam'
+                    temp_bam_filename_reverse = f'{temp_directory_name}/{family_file_prefix}{family_index}_R.bam'
+                    temp_bam_forward = pysam.AlignmentFile(temp_bam_filename_forward, 'wb', header=input_bam.header)
+                    temp_bam_reverse = pysam.AlignmentFile(temp_bam_filename_reverse, 'wb', header=input_bam.header)
+                    current_family = current_read_family
+                    if input_record.is_reverse:
+                        temp_bam_reverse.write(input_record)
+                        current_family_forward_size = 0
+                        current_family_reverse_size = 1
+                    else:
+                        temp_bam_forward.write(input_record)
+                        current_family_forward_size = 1
+                        current_family_reverse_size = 0
+                    current_family_size = 1
+                if show_progress_bar:
+                    pbar.update(1)
+            if temp_bam_forward is not None:
+                temp_bam_forward.close()
 
 
 def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[str]:
@@ -151,14 +205,15 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
         if base_call == "":
             cigar_value = BAM_CREF_SKIP
 
-        return [base_call, chr(quality_score+33), cigar_value]
+        return [base_call, chr(quality_score + 33), cigar_value]
 
 
 def call_consensus(family_bam: str,
                    new_read_name: str = None,
                    temp_sorted_filename: str = None,
                    max_depth: int = 10000,
-                   debug: bool = False) -> pysam.AlignedSegment:
+                   debug: bool = False,
+                   debug_keep_families=False) -> pysam.AlignedSegment:
     """
     call a consensus read from a read family file
     :param family_bam: name of file containing the family reads
@@ -192,8 +247,8 @@ def call_consensus(family_bam: str,
 
     first_pileup_position = None
     with pysam.AlignmentFile(temp_sorted_filename, "rb") as family_file:
-        for pileupcolumn in family_file.pileup(stepper="nofilter", max_depth=max_depth):
-            pos = pileupcolumn.pos
+        for pileup_column in family_file.pileup(stepper="nofilter", max_depth=max_depth):
+            pos = pileup_column.pos
 
             if first_pileup_position is None:
                 first_pileup_position = pos
@@ -210,8 +265,8 @@ def call_consensus(family_bam: str,
                     cigar_last = BAM_CREF_SKIP
                     cigar_last_count = position_delta
 
-            query_sequences = pileupcolumn.get_query_sequences()
-            query_qualities = pileupcolumn.get_query_qualities()
+            query_sequences = pileup_column.get_query_sequences()
+            query_qualities = pileup_column.get_query_qualities()
 
             called_base, called_quality, called_cigar = call_base(query_sequences, query_qualities)
 
@@ -252,15 +307,6 @@ def call_consensus(family_bam: str,
     new_read.cigartuples = new_read_cigar_tuple_list
     new_read.query_qualities = quality_array
     new_read.tags = tags
-
-    if debug:
-        print('--- DEBUG INFORMATION ---')
-        print(f'new_read_name: {new_read_name}')
-        print(f'query_sequence: {new_read.query_sequence}')
-        print(f'length of query: {len(new_read.query_sequence)}')
-        print(f'cigar tuples: {new_read_cigar_tuple_list}')
-        print(f'quality string: {quality_string}')
-        print(f'quality array: {quality_array}')
 
     return new_read
 

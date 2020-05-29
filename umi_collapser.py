@@ -105,8 +105,7 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
     :return: list with base call, quality and cigar string
     """
     if len(query_sequences) == 0:
-        return ['', 'F', 'M']
-        # TODO: Don't output quality, fix CIGAR
+        return ['', '', BAM_CREF_SKIP]
     else:
         query_sequences_upper = [x.upper() for x in query_sequences]
         base_frequencies = Counter(query_sequences_upper)
@@ -145,7 +144,12 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
                 base_call = 'N'
                 # TODO: Output minimal quality
 
-        return [base_call, 'F', 'M']
+        # Check if the most common base was ''
+        cigar_value = BAM_CMATCH
+        if base_call == "":
+            cigar_value = BAM_CREF_SKIP
+
+        return [base_call, 'F', cigar_value]
 
 
 def call_consensus(temp_bam_filename: str, new_read_name: str = None, temp_sorted_filename: str = None,
@@ -206,7 +210,7 @@ def call_consensus(temp_bam_filename: str, new_read_name: str = None, temp_sorte
 
             called_base, called_quality, called_cigar = call_base(query_sequences, query_qualities)
 
-            if called_base == "":
+            if called_cigar == BAM_CREF_SKIP:
                 if cigar_last == BAM_CREF_SKIP:
                     cigar_last_count += 1
                 else:

@@ -47,9 +47,9 @@ def umi_collapse_sorted_file(input_bam_filename: str,
     """
 
     # DEBUG
-    debug = True
-    debug_family_ids = [87617]
-    debug_family_location = "/Users/barkasn/Desktop/debug/"
+    #debug = True
+    #debug_family_ids = [87617]
+    #debug_family_location = "/Users/barkasn/Desktop/debug/"
 
     current_family = None
     current_family_size = 0
@@ -104,12 +104,12 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                                     output_bam.write(new_read)
                             else:
                                 if current_family_forward_size == 1:
-                                    # copy read, could cache last read and avoid re-openning file
+                                    # copy read, could cache last read and avoid re-opening file
                                     with pysam.AlignmentFile(temp_bam_filename_forward, "rb") as family_file:
                                         first_read = family_file.__next__()
                                         output_bam.write(first_read)
                                 else:
-                                    # copy read, could cache last read and avoid re-openning file
+                                    # copy read, could cache last read and avoid re-opening file
                                     with pysam.AlignmentFile(temp_bam_filename_reverse, "rb") as family_file:
                                         first_read = family_file.__next__()
                                         output_bam.write(first_read)
@@ -126,29 +126,31 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                                     with pysam.AlignmentFile(collapsed_read_bam_filename,
                                                              "wb", header=input_bam.header) as collapsed_read_bam:
                                         collapsed_read_bam.write(new_read)
-                        # Cleanup
-                        os.remove(temp_bam_filename_forward)
-                        os.remove(temp_bam_filename_reverse)
-                    family_index = family_index + 1
-                    # create new bam for this family
-                    temp_bam_filename_forward = f'{temp_directory_name}/{family_file_prefix}{family_index}_F.bam'
-                    temp_bam_filename_reverse = f'{temp_directory_name}/{family_file_prefix}{family_index}_R.bam'
-                    temp_bam_forward = pysam.AlignmentFile(temp_bam_filename_forward, 'wb', header=input_bam.header)
-                    temp_bam_reverse = pysam.AlignmentFile(temp_bam_filename_reverse, 'wb', header=input_bam.header)
-                    current_family = current_read_family
-                    if input_record.is_reverse:
-                        temp_bam_reverse.write(input_record)
-                        current_family_forward_size = 0
-                        current_family_reverse_size = 1
-                    else:
-                        temp_bam_forward.write(input_record)
-                        current_family_forward_size = 1
-                        current_family_reverse_size = 0
-                    current_family_size = 1
-                if show_progress_bar:
-                    pbar.update(1)
+                            # Cleanup
+                            os.remove(temp_bam_filename_forward)
+                            os.remove(temp_bam_filename_reverse)
+                        family_index = family_index + 1
+                        # create new bam for this family
+                        temp_bam_filename_forward = f'{temp_directory_name}/{family_file_prefix}{family_index}_F.bam'
+                        temp_bam_filename_reverse = f'{temp_directory_name}/{family_file_prefix}{family_index}_R.bam'
+                        temp_bam_forward = pysam.AlignmentFile(temp_bam_filename_forward, 'wb', header=input_bam.header)
+                        temp_bam_reverse = pysam.AlignmentFile(temp_bam_filename_reverse, 'wb', header=input_bam.header)
+                        current_family = current_read_family
+                        if input_record.is_reverse:
+                            temp_bam_reverse.write(input_record)
+                            current_family_forward_size = 0
+                            current_family_reverse_size = 1
+                        else:
+                            temp_bam_forward.write(input_record)
+                            current_family_forward_size = 1
+                            current_family_reverse_size = 0
+                        current_family_size = 1
+                    if show_progress_bar:
+                        pbar.update(1)
             if temp_bam_forward is not None:
                 temp_bam_forward.close()
+                temp_bam_reverse.close()
+                # TODO: Call final family
 
 
 def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[str]:
@@ -247,7 +249,7 @@ def call_consensus(family_bam: str,
 
     first_pileup_position = None
     with pysam.AlignmentFile(temp_sorted_filename, "rb") as family_file:
-        for pileup_column in family_file.pileup(stepper="nofilter", max_depth=max_depth):
+        for pileup_column in family_file.pileup(stepper="nofilter", max_depth=max_depth, min_base_quality=0):
             pos = pileup_column.pos
 
             if first_pileup_position is None:

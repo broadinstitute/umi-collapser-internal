@@ -104,6 +104,7 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
     :param query_qualities: base qualities from pileup for given position
     :return: list with base call, quality and cigar string
     """
+    quality_score = None
     if len(query_sequences) == 0:
         return ['', '', BAM_CREF_SKIP]
     else:
@@ -122,7 +123,8 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
 
         if not tie_exists:
             base_call = most_common[0]
-            # TODO: Calculate quality
+            select_vector = [qs == base_call for qs in query_sequences_upper]
+            quality_score = max(list(compress(query_qualities, select_vector)))
         else:
             # Find which bases tie
             tied_bases = [x for x in base_frequencies if base_frequencies[x] == most_common_freq]
@@ -138,18 +140,19 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
             max_quality = max([x[1] for x in tied_total_qualities])
             if sum([x[1] == max_quality for x in tied_total_qualities]) == 1:
                 base_call = [x[0] for x in tied_total_qualities if x[1] == max_quality][0]
-                # TODO: Calculate quality
+                select_vector = [qs == base_call for qs in query_sequences_upper]
+                quality_score = max(list(compress(query_qualities, select_vector)))
             else:
                 # qualities tie, can't call base
                 base_call = 'N'
-                # TODO: Output minimal quality
+                quality_score = 0
 
         # Check if the most common base was ''
         cigar_value = BAM_CMATCH
         if base_call == "":
             cigar_value = BAM_CREF_SKIP
 
-        return [base_call, 'F', cigar_value]
+        return [base_call, chr(quality_score+33), cigar_value]
 
 
 def call_consensus(temp_bam_filename: str, new_read_name: str = None, temp_sorted_filename: str = None,

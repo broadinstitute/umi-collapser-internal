@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name="umi-collapser",
+    name="umi_collapser",
     author="Nikolas Barkas",
     author_email="nbarkas@broadinstitute.org",
     description="scRNA-seq UMI read collapser",
@@ -12,8 +12,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'umi-collapser = umi-collapser.__main__:main'
+            'umiCollapser=umi_collapser.__main__:main'
         ]
     }
-
 )

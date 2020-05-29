@@ -49,9 +49,9 @@ def umi_collapse_sorted_file(input_bam_filename: str,
     input_record_count = 0
     temp_bam_filename = None
     temp_bam = None
-    family_file_prefix = "family_",
+    family_file_prefix = "family_"
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
+    with tempfile.TemporaryDirectory() as temp_directory_name:
         if verbose and (total_reads is not None):
             show_progress_bar = True
         else:
@@ -86,7 +86,7 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                                 os.remove(temp_bam_filename)
                         family_index = family_index + 1
                         # create new bam for this family
-                        temp_bam_filename = f'{tmpdirname}/{family_file_prefix}{family_index}.bam'
+                        temp_bam_filename = f'{temp_directory_name}/{family_file_prefix}{family_index}.bam'
                         temp_bam = pysam.AlignmentFile(temp_bam_filename, 'wb', header=input_bam.header)
                         current_family = current_read_family
                         temp_bam.write(input_record)
@@ -104,9 +104,8 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
     :param query_qualities: base qualities from pileup for given position
     :return: list with base call, quality and cigar string
     """
-    quality_score = None
     if len(query_sequences) == 0:
-        return ['', '', BAM_CREF_SKIP]
+        return ['', chr(33), BAM_CREF_SKIP]
     else:
         query_sequences_upper = [x.upper() for x in query_sequences]
         base_frequencies = Counter(query_sequences_upper)
@@ -155,11 +154,14 @@ def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[st
         return [base_call, chr(quality_score+33), cigar_value]
 
 
-def call_consensus(temp_bam_filename: str, new_read_name: str = None, temp_sorted_filename: str = None,
-                   max_depth: int = 10000, debug: bool = False) -> pysam.AlignedSegment:
+def call_consensus(family_bam: str,
+                   new_read_name: str = None,
+                   temp_sorted_filename: str = None,
+                   max_depth: int = 10000,
+                   debug: bool = False) -> pysam.AlignedSegment:
     """
     call a consensus read from a read family file
-    :param temp_bam_filename: name of file containing the family reads
+    :param family_bam: name of file containing the family reads
     :param new_read_name: name of new read
     :param temp_sorted_filename: name of temporary file in which to store family reads
     :param max_depth: max depth parameter for pileup
@@ -171,7 +173,7 @@ def call_consensus(temp_bam_filename: str, new_read_name: str = None, temp_sorte
     assert new_read_name is not None
 
     # sort and index the family file
-    pysam.sort(temp_bam_filename, "-o", temp_sorted_filename)
+    pysam.sort(family_bam, "-o", temp_sorted_filename)
     pysam.index(temp_sorted_filename)
 
     with pysam.AlignmentFile(temp_sorted_filename, "rb") as family_file:

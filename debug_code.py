@@ -2,6 +2,10 @@ import pysam
 import umi_collapser
 
 
+# Example call
+# debug_code.debug_single_family(family_bam="/Users/barkasn/Desktop/debug_1/family_87617_F.bam",
+#                               output="/Users/barkasn/Desktop/debug/family_87617_F_consensus.bam")
+
 def debug_single_family(family_bam,
                         output="consensus_read.bam",
                         temp_sorted_filename="temp.bam",

@@ -48,11 +48,6 @@ def umi_collapse_sorted_file(input_bam_filename: str,
     :return: None
     """
 
-    # DEBUG
-    #debug = True
-    #debug_family_ids = [87617]
-    #debug_family_location = "/Users/barkasn/Desktop/debug/"
-
     current_family = None
     current_family_size = 0
     current_family_forward_size = 0
@@ -127,24 +122,26 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                                       temp_bam_filename_reverse)
 
 
+# TODO: Add type hinting
 def call_family_consensus(current_family_forward_size, current_family_reverse_size, current_family_size, debug,
                           debug_family_ids, debug_family_location, family_file_prefix, family_index, input_bam,
                           output_bam, synthetic_read_prefix, temp_bam_filename_forward, temp_bam_filename_reverse) -> None:
     """
-    Call consensus read for family selecting if forward or reverse orientation should be used
-    :param current_family_forward_size:
-    :param current_family_reverse_size:
-    :param current_family_size:
-    :param debug:
-    :param debug_family_ids:
-    :param debug_family_location:
-    :param family_file_prefix:
-    :param family_index:
-    :param input_bam:
-    :param output_bam:
-    :param synthetic_read_prefix:
-    :param temp_bam_filename_forward:
-    :param temp_bam_filename_reverse:
+    Call consensus read for family identifying if collapse is required and
+    selecting if forward or reverse orientation should be used
+    :param current_family_forward_size: number of reads in forward orientation for this family
+    :param current_family_reverse_size: number of reads in reverse orientation for this family
+    :param current_family_size: total family size
+    :param debug: debug mode
+    :param debug_family_ids: families for which to generate debug files
+    :param debug_family_location: location where to save the debug files
+    :param family_file_prefix: prefix of family files
+    :param family_index: index for the family
+    :param input_bam: input bam file (opened)
+    :param output_bam: output bam files
+    :param synthetic_read_prefix: prefix for synthetic reads
+    :param temp_bam_filename_forward: temp filename of file with forward reads
+    :param temp_bam_filename_reverse: temp filenem of file with reverse reads
     :return: None
     """
     if current_family_size > 1:
@@ -178,7 +175,7 @@ def call_family_consensus(current_family_forward_size, current_family_reverse_si
                               input_bam, new_read, temp_bam_filename_forward,
                               temp_bam_filename_reverse)
 
-
+# TODO: Add type hinting
 def save_family_debug(debug_family_location, family_file_prefix, family_index, input_bam, new_read,
                       temp_bam_filename_forward, temp_bam_filename_reverse) -> None:
     """
@@ -301,7 +298,6 @@ def call_consensus(family_bam: str,
     first_pileup_position = None
     with pysam.AlignmentFile(temp_sorted_filename, "rb") as family_file:
         for pileup_column in family_file.pileup(stepper="nofilter", max_depth=max_depth, min_base_quality=0):
-        #for pileup_column in family_file.pileup(stepper="nofilter", max_depth=max_depth):
             pos = pileup_column.pos
 
             if first_pileup_position is None:

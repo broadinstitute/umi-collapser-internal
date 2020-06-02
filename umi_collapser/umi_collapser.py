@@ -40,7 +40,7 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                              total_reads: bool = None,
                              synthetic_read_prefix: str = "synthetic_read_",
                              debug: bool = False,
-                             debug_family_ids: List[int] = [],
+                             debug_family_ids: List[int] = None,
                              debug_family_location: str = None,
                              calling_method: str = "posterior",
                              ) -> None:
@@ -188,6 +188,7 @@ def call_family_consensus(
     :param synthetic_read_prefix: prefix for synthetic reads
     :param temp_bam_filename_forward: temp filename of file with forward reads
     :param temp_bam_filename_reverse: temp filenem of file with reverse reads
+    :param calling_method: method for base calling
     :return: None
     """
     if current_family_size > 1:
@@ -410,8 +411,6 @@ def call_consensus(family_bam: str,
                    new_read_name: str = None,
                    temp_sorted_filename: str = None,
                    max_depth: int = 10000,
-                   debug: bool = False,
-                   debug_keep_families: bool = False,
                    calling_method: str = 'posterior') -> pysam.AlignedSegment:
     """
     call a consensus read from a read family file
@@ -419,7 +418,7 @@ def call_consensus(family_bam: str,
     :param new_read_name: name of new read
     :param temp_sorted_filename: name of temporary file in which to store family reads
     :param max_depth: max depth parameter for pileup
-    :param debug: debug mode
+    :param calling_method: method for calling individual bases
     :return: consensus read
     """
 

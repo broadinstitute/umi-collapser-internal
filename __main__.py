@@ -11,6 +11,7 @@ def main() -> int:
     parser.add_argument("--cell_barcode_tag", default="XC")
     parser.add_argument("--molecular_barcode_tag", default="XM")
     parser.add_argument("--gene_tag", default="gn")
+    parser.add_argument("--calling_method", default="posterior", choices=['posterior', 'majority'])
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--debug", action="store_true")
 

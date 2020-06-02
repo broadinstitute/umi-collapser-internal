@@ -10,6 +10,11 @@ from shutil import copyfile
 import numpy as np
 from scipy.special import logsumexp
 
+# constants
+DNA_BASES = ['A', 'T', 'G', 'C']
+FLOAT_EPSILON = 1e-16
+
+
 # CIGAR String constants
 BAM_CMATCH = 0  # M
 BAM_CREF_SKIP = 3  # N
@@ -227,15 +232,15 @@ def get_log_prob_compl_stable(ln_prob):
     )
 
 
-def call_base_posterior(query_sequences: List[str], query_qualities: List[int], max_quality_score = 40) -> List[str]:
+def call_base_posterior(query_sequences: List[str], query_qualities: List[int], max_quality_score=40) -> List[str]:
 
     assert len(query_sequences) == len(query_qualities)
 
+    if len(query_sequences) == 0:
+        return ['', chr(33), BAM_CREF_SKIP]
+
     # k is the size of the pileup here
     k = len(query_sequences)
-
-    # array of possible bases
-    bases = ['A', 'T', 'G', 'C']
 
     # Calculate p of each base being correct or wrong in log_e
     q_i = np.array(query_qualities)
@@ -245,21 +250,17 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
     # Construct arrays to manipulate all data together
     p_d_base = np.empty([k, 4])
     p_d_not_base = np.empty([k, 4])
-    for j in range(len(bases)):
-        for i in range(k):
-            if query_sequences[i] == bases[j]:
-                p_d_base[i, j] = ln_p_correct[i]
-                p_d_not_base[i, j] = ln_p_error[i]
-            else:
-                p_d_base[i, j] = ln_p_error[i]
-                p_d_not_base[i, j] = ln_p_correct[i]
+    for j in range(len(DNA_BASES)):
+        v = query_sequences == np.full([1, len(query_sequences)], DNA_BASES[j])
+        p_d_base[:, j] = np.where(v, ln_p_correct, ln_p_error)
+        p_d_not_base[:, j] = np.where(v, ln_p_error, ln_p_correct)
 
     # Calculate p of data given each underlying base
     p_d_base_sum = np.sum(p_d_base, 0)
     p_d_not_base_sum = np.sum(p_d_not_base, 0)
 
-    # Calculate Posterior
-    nominator = p_d_base_sum + np.log(np.divide(1, 4))
+    # Calculate Posterior Probabilities
+    nominator = np.add(p_d_base_sum, np.log(np.divide(1, 4)))
     denominator = logsumexp(
         np.vstack(
             (
@@ -275,15 +276,16 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
         ),
         0
     )
-
     log_p = nominator - denominator
+
+    # Normalize Posteriors
     log_p_norm = log_p - logsumexp(log_p)
 
     # Call the base with max p
     call_i = np.argmax(log_p_norm)
 
-    if np.sum(log_p_norm == log_p_norm[call_i]) == 1:
-        basecall = bases[call_i]
+    if np.sum(np.subtract(log_p_norm, log_p_norm[call_i]) < FLOAT_EPSILON) == 1:
+        base_call = DNA_BASES[call_i]
 
         # Probability of incorrect call is sum of p that another base is correct
         log_p_incorrect_call = logsumexp(log_p_norm[np.arange(len(log_p_norm)) != call_i])
@@ -298,11 +300,11 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
         cigar_value = BAM_CMATCH
     else:
         # There is a tie, don't call base
-        basecall = 'N'
+        base_call = 'N'
         quality_score = 0
         cigar_value = BAM_CMATCH
 
-    return [basecall, chr(quality_score + 33), BAM_CMATCH]
+    return [base_call, chr(quality_score + 33), BAM_CMATCH]
 
 
 def call_base_majority_vote(query_sequences: List[str], query_qualities: List[int]) -> List[str]:

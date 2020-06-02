@@ -2,13 +2,14 @@ import pysam
 import tqdm
 import os
 import sctools_imports
-from typing import (List, Any)
+from typing import (List, Any, Tuple)
 import tempfile
 from collections import Counter
 from itertools import compress
 from shutil import copyfile
 import numpy as np
 from scipy.special import logsumexp
+import functools
 
 # constants
 DNA_BASES = ['A', 'T', 'G', 'C']
@@ -255,7 +256,7 @@ def call_base(query_sequences: List[str], query_qualities: List[int], calling_me
     if calling_method == "majority":
         return call_base_majority_vote(query_sequences, query_qualities)
     elif calling_method == "posterior":
-        return call_base_posterior(query_sequences, query_qualities)
+        return call_base_posterior(tuple(query_sequences), tuple(query_qualities))
     else:
         raise Exception("Unknown method for base calling")
 
@@ -275,8 +276,12 @@ def get_log_prob_compl_stable(ln_prob):
     )
 
 
-def call_base_posterior(query_sequences: List[str], query_qualities: List[int], max_quality_score=40) -> List[str]:
+@functools.lru_cache(maxsize=2000, typed=True)
+def call_base_posterior(query_sequences: Tuple[str], query_qualities: Tuple[int], max_quality_score=40) -> List[str]:
     assert len(query_sequences) == len(query_qualities)
+
+    query_sequences = list(query_sequences)
+    query_qualities = list(query_qualities)
 
     if len(query_sequences) == 0:
         return ['', chr(33), BAM_CREF_SKIP]

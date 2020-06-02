@@ -15,5 +15,31 @@ Reads that do not form families of more than one are output with no modification
 
 ## Example Usage
 ```
+$ umi-collapser --help
+usage: umi-collapser [-h] -i INPUT_BAM -o OUTPUT_BAM [--input_is_sorted]
+                   [--cell_barcode_tag CELL_BARCODE_TAG]
+                   [--molecular_barcode_tag MOLECULAR_BARCODE_TAG]
+                   [--gene_tag GENE_TAG]
+                   [--calling_method {posterior,majority}] [--verbose]
+                   [--debug]
+
+Collapse reads from the same Gene, UMI, Cell Barcode Triplet
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT_BAM, --input_bam INPUT_BAM
+                        input bamfile
+  -o OUTPUT_BAM, --output_bam OUTPUT_BAM
+                        output bamfile
+  --input_is_sorted     flag indicating if the input bam is sorted by tags
+  --cell_barcode_tag CELL_BARCODE_TAG
+                        tag name for the cell barcode
+  --molecular_barcode_tag MOLECULAR_BARCODE_TAG
+                        tag name for the molecular barcode
+  --gene_tag GENE_TAG   tag name for the gene tag
+  --calling_method {posterior,majority}
+                        method to use to call individual bases
+  --verbose             verbosity level
+  --debug               flag for debug mode
 
 ```

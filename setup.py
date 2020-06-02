@@ -24,7 +24,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'umiCollapser=umi-collapser.__main__:main'
+            'umi-collapser=umi-collapser.__main__:main'
         ]
     }
 )

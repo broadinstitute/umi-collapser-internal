@@ -200,8 +200,19 @@ def save_family_debug(debug_family_location, family_file_prefix, family_index, i
                              "wb", header=input_bam.header) as collapsed_read_bam:
         collapsed_read_bam.write(new_read)
 
+def call_base(query_sequences: List[str], query_qualities: List[int], method="majority") -> List[str]:
+    if method == "majority":
+        return call_base_majority_vote(query_sequences, query_qualities)
+    elif method == "posterior":
+        return call_base_posterior(query_qualities, query_qualities)
+    else:
+        raise Exception("Unknown method for base calling")
 
-def call_base(query_sequences: List[str], query_qualities: List[int]) -> List[str]:
+
+def call_base_posterior(query_sequences: List[str], query_qualities: List[int]) -> List[str]:
+    pass
+
+def call_base_majority_vote(query_sequences: List[str], query_qualities: List[int]) -> List[str]:
     """
     call a base based on the query sequences and query qualities
     :param query_sequences: base calls from pileup for given position

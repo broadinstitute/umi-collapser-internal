@@ -8,7 +8,9 @@ setup(
     url="https://github.com/broadinstitute/umi-collapser-internal",
     install_requires=[
         "pysam",
-        "tqdm"
+        "tqdm",
+        "numpy",
+        "scipy"
     ],
     entry_points={
         'console_scripts': [

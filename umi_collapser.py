@@ -199,10 +199,8 @@ def save_family_debug(debug_family_location, family_file_prefix, family_index, i
     :return: None
     """
     # save information about this family in the target location
-    copyfile(temp_bam_filename_forward, f"{debug_family_location}/"
-    f"{family_file_prefix}{family_index}_F.bam")
-    copyfile(temp_bam_filename_reverse, f"{debug_family_location}/"
-    f"{family_file_prefix}{family_index}_R.bam")
+    copyfile(temp_bam_filename_forward, f"{debug_family_location}/{family_file_prefix}{family_index}_F.bam")
+    copyfile(temp_bam_filename_reverse, f"{debug_family_location}/{family_file_prefix}{family_index}_R.bam")
     collapsed_read_bam_filename = f"{debug_family_location}" + \
                                   f"{family_file_prefix}{family_index}_collapsed.bam"
     with pysam.AlignmentFile(collapsed_read_bam_filename,
@@ -210,7 +208,7 @@ def save_family_debug(debug_family_location, family_file_prefix, family_index, i
         collapsed_read_bam.write(new_read)
 
 
-def call_base(query_sequences: List[str], query_qualities: List[int], method="posterior") -> List[str]:
+def call_base(query_sequences: List[str], query_qualities: List[int], method: str = "posterior") -> List[str]:
     if method == "majority":
         return call_base_majority_vote(query_sequences, query_qualities)
     elif method == "posterior":
@@ -284,7 +282,7 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
     log_p_norm = log_p - logsumexp(log_p)
 
     # Call the base with max p
-    call_i = np.argmax(log_p_norm)
+    call_i = int(np.argmax(log_p_norm))
 
     if np.sum(np.subtract(log_p_norm, log_p_norm[call_i]) < FLOAT_EPSILON) == 1:
         base_call = DNA_BASES[call_i]
@@ -306,7 +304,7 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
         quality_score = 0
         cigar_value = BAM_CMATCH
 
-    return [base_call, chr(quality_score + 33), BAM_CMATCH]
+    return [base_call, chr(quality_score + 33), cigar_value]
 
 
 def call_base_majority_vote(query_sequences: List[str], query_qualities: List[int]) -> List[str]:

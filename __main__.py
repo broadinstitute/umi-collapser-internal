@@ -24,7 +24,8 @@ def main() -> int:
                                cell_barcode_tag=args.cell_barcode_tag,
                                molecular_barcode_tag=args.molecular_barcode_tag,
                                gene_tag=args.gene_tag,
-                               debug=args.debug)
+                               debug=args.debug,
+                               calling_method=args.calling_method)
     return 0
 
 

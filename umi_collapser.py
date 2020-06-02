@@ -40,8 +40,9 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                              total_reads: bool = None,
                              synthetic_read_prefix: str = "synthetic_read_",
                              debug: bool = False,
-                             debug_family_ids: List[int] = None,
+                             debug_family_ids: List[int] = [],
                              debug_family_location: str = None,
+                             calling_method: str = "posterior",
                              ) -> None:
     """
     Perform family collapsing on a file that has been sorted
@@ -54,6 +55,7 @@ def umi_collapse_sorted_file(input_bam_filename: str,
     :param synthetic_read_prefix: prefix for new reads
     :param debug_family_ids: list of ids of families to save for debug purposes
     :param debug_family_location: location where to save debug files
+    :param calling_method: method for calling bases
     :return: None
     """
 
@@ -95,11 +97,22 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                         if temp_bam_forward is not None:
                             temp_bam_forward.close()
                             temp_bam_reverse.close()
-                            call_family_consensus(current_family_forward_size, current_family_reverse_size,
-                                                  current_family_size, debug, debug_family_ids, debug_family_location,
-                                                  family_file_prefix, family_index, input_bam, output_bam,
-                                                  synthetic_read_prefix, temp_bam_filename_forward,
-                                                  temp_bam_filename_reverse)
+                            call_family_consensus(
+                                current_family_forward_size = current_family_forward_size,
+                                current_family_reverse_size = current_family_reverse_size,
+                                current_family_size = current_family_size,
+                                debug = debug,
+                                debug_family_ids = debug_family_ids,
+                                debug_family_location = debug_family_location,
+                                family_file_prefix = family_file_prefix,
+                                family_index = family_index,
+                                input_bam = input_bam,
+                                output_bam = output_bam,
+                                synthetic_read_prefix = synthetic_read_prefix,
+                                temp_bam_filename_forward = temp_bam_filename_forward,
+                                temp_bam_filename_reverse = temp_bam_filename_reverse,
+                                calling_method = calling_method,
+                            )
                             # Cleanup
                             os.remove(temp_bam_filename_forward)
                             os.remove(temp_bam_filename_reverse)
@@ -124,18 +137,41 @@ def umi_collapse_sorted_file(input_bam_filename: str,
             if temp_bam_forward is not None:
                 temp_bam_forward.close()
                 temp_bam_reverse.close()
-                call_family_consensus(current_family_forward_size, current_family_reverse_size,
-                                      current_family_size, debug, debug_family_ids, debug_family_location,
-                                      family_file_prefix, family_index, input_bam, output_bam,
-                                      synthetic_read_prefix, temp_bam_filename_forward,
-                                      temp_bam_filename_reverse)
+                call_family_consensus(
+                    current_family_forward_size=current_family_forward_size,
+                    current_family_reverse_size=current_family_reverse_size,
+                    current_family_size=current_family_size,
+                    debug=debug,
+                    debug_family_ids=debug_family_ids,
+                    debug_family_location=debug_family_location,
+                    family_file_prefix=family_file_prefix,
+                    family_index=family_index,
+                    input_bam=input_bam,
+                    output_bam=output_bam,
+                    synthetic_read_prefix=synthetic_read_prefix,
+                    temp_bam_filename_forward=temp_bam_filename_forward,
+                    temp_bam_filename_reverse=temp_bam_filename_reverse,
+                    calling_method=calling_method
+                )
 
 
-# TODO: Add type hinting
-def call_family_consensus(current_family_forward_size, current_family_reverse_size, current_family_size, debug,
-                          debug_family_ids, debug_family_location, family_file_prefix, family_index, input_bam,
-                          output_bam, synthetic_read_prefix, temp_bam_filename_forward,
-                          temp_bam_filename_reverse) -> None:
+def call_family_consensus(
+        current_family_forward_size: int,
+        current_family_reverse_size: int,
+        current_family_size: int,
+        debug: bool,
+        debug_family_ids: List[str],
+        debug_family_location: str,
+        family_file_prefix: str,
+        family_index: int,
+        input_bam: pysam.AlignmentFile,
+        output_bam: pysam.AlignmentFile,
+        synthetic_read_prefix: str,
+        temp_bam_filename_forward: str,
+        temp_bam_filename_reverse: str,
+        calling_method: str,
+
+) -> None:
     """
     Call consensus read for family identifying if collapse is required and
     selecting if forward or reverse orientation should be used
@@ -158,14 +194,14 @@ def call_family_consensus(current_family_forward_size, current_family_reverse_si
         if current_family_forward_size >= current_family_reverse_size:
             new_read = call_consensus(temp_bam_filename_forward,
                                       new_read_name=f'{synthetic_read_prefix}{family_index}',
-                                      temp_sorted_filename=f'{temp_bam_filename_forward}'
-                                      f'.sorted.bam')
+                                      temp_sorted_filename=f'{temp_bam_filename_forward}.sorted.bam',
+                                      calling_method=calling_method)
             output_bam.write(new_read)
         else:
             new_read = call_consensus(temp_bam_filename_reverse,
                                       new_read_name=f'{synthetic_read_prefix}{family_index}',
-                                      temp_sorted_filename=f'{temp_bam_filename_forward}'
-                                      f'.sorted.bam')
+                                      temp_sorted_filename=f'{temp_bam_filename_forward}.sorted.bam',
+                                      calling_method=calling_method)
             output_bam.write(new_read)
     else:
         if current_family_forward_size == 1:
@@ -187,8 +223,14 @@ def call_family_consensus(current_family_forward_size, current_family_reverse_si
 
 
 # TODO: Add type hinting
-def save_family_debug(debug_family_location, family_file_prefix, family_index, input_bam, new_read,
-                      temp_bam_filename_forward, temp_bam_filename_reverse) -> None:
+def save_family_debug(
+        debug_family_location,
+        family_file_prefix,
+        family_index,
+        input_bam,
+        new_read,
+        temp_bam_filename_forward,
+        temp_bam_filename_reverse) -> None:
     """
     Save debug information for family
     :param debug_family_location: location where to save the files
@@ -210,10 +252,10 @@ def save_family_debug(debug_family_location, family_file_prefix, family_index, i
         collapsed_read_bam.write(new_read)
 
 
-def call_base(query_sequences: List[str], query_qualities: List[int], method: str = "posterior") -> List[str]:
-    if method == "majority":
+def call_base(query_sequences: List[str], query_qualities: List[int], calling_method: str = "posterior") -> List[str]:
+    if calling_method == "majority":
         return call_base_majority_vote(query_sequences, query_qualities)
-    elif method == "posterior":
+    elif calling_method == "posterior":
         return call_base_posterior(query_qualities, query_qualities)
     else:
         raise Exception("Unknown method for base calling")
@@ -252,8 +294,7 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
     p_d_base = np.empty([k, 4])
     p_d_not_base = np.empty([k, 4])
     for j in range(len(DNA_BASES)):
-        # TODO: np.full is not happy with a str for input
-        v = query_sequences == np.full([1, len(query_sequences)], DNA_BASES[j])
+        v = query_sequences == [DNA_BASES[j]] * len(query_sequences)
         p_d_base[:, j] = np.where(v, ln_p_correct, ln_p_error)
         p_d_not_base[:, j] = np.where(v, ln_p_error, ln_p_correct)
 
@@ -278,7 +319,7 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
         ),
         0
     )
-    log_p = nominator - denominator
+    log_p = np.subtract(nominator, denominator)
 
     # Normalize Posteriors
     log_p_norm = log_p - logsumexp(log_p)
@@ -371,7 +412,8 @@ def call_consensus(family_bam: str,
                    temp_sorted_filename: str = None,
                    max_depth: int = 10000,
                    debug: bool = False,
-                   debug_keep_families=False) -> pysam.AlignedSegment:
+                   debug_keep_families: bool=False,
+                   calling_method:str = 'posterior') -> pysam.AlignedSegment:
     """
     call a consensus read from a read family file
     :param family_bam: name of file containing the family reads
@@ -427,7 +469,10 @@ def call_consensus(family_bam: str,
             query_sequences = pileup_column.get_query_sequences()
             query_qualities = pileup_column.get_query_qualities()
 
-            called_base, called_quality, called_cigar = call_base(query_sequences, query_qualities)
+            called_base, called_quality, called_cigar = call_base(
+                query_sequences = query_sequences,
+                query_qualities = query_qualities,
+                calling_method = calling_method)
 
             if called_cigar == BAM_CREF_SKIP:
                 # No base could be called and we have a single skip
@@ -483,7 +528,8 @@ def umi_collapse(input_file: str,
                  tag_sorted_tmp_filename: str = 'tag_sorted_tmp.bam',
                  cell_barcode_tag: str = "XC",
                  molecular_barcode_tag: str = "XM",
-                 gene_tag: str = "gn") -> None:
+                 gene_tag: str = "gn",
+                 calling_method: str = "posterior") -> None:
     """
     Collapse all umi families
     :param input_file: input bam file
@@ -495,6 +541,7 @@ def umi_collapse(input_file: str,
     :param cell_barcode_tag: tag name for the cell barcode
     :param molecular_barcode_tag: tag name for the molecular barcode
     :param gene_tag: tag name for the gene tag
+    :param calling_method: calling method for bases
     :return: None
     """
     tag_ordering = [cell_barcode_tag, molecular_barcode_tag, gene_tag]
@@ -517,6 +564,7 @@ def umi_collapse(input_file: str,
                              verbose=verbose,
                              total_reads=total_number_of_reads,
                              debug=debug,
+                             calling_method=calling_method
                              )
 
     print('Cleaning up...')

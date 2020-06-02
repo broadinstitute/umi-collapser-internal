@@ -14,6 +14,8 @@ from scipy.special import logsumexp
 DNA_BASES = ['A', 'T', 'G', 'C']
 FLOAT_EPSILON = 1e-16
 LN_1_M_EXP_THRESHOLD = -np.log(2.)
+LN_1_DIV_4 =np.log(np.divide(1, 4))
+LN_3_DIV_4 =np.log(np.divide(3, 4))
 
 # CIGAR String constants
 BAM_CMATCH = 0  # M
@@ -260,7 +262,7 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
     p_d_not_base_sum = np.sum(p_d_not_base, 0)
 
     # Calculate Posterior Probabilities
-    nominator = np.add(p_d_base_sum, np.log(np.divide(1, 4)))
+    nominator = np.add(p_d_base_sum, LN_1_DIV_4)
     denominator = logsumexp(
         np.vstack(
             (
@@ -269,7 +271,7 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
                     p_d_not_base_sum,
                     np.full(
                         [1, 4],
-                        np.log(np.divide(3, 4))
+                        LN_3_DIV_4
                     )
                 )
             )

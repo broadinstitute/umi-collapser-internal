@@ -6,7 +6,7 @@ read, calling consensus bases for any bases covered by multiple reads
  
 ## Consensus base calling
 Two methods of consensus bases calling are currently supported: calculation of
- the posterior probabilities for each base and simple majority voting.
+the posterior probabilities for each base and simple majority voting.
  
 ## Inputs and Output
 Umi-collapser accepts a BAM files with reads tagged by cellular and molecular 

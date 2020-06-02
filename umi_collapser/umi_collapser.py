@@ -14,8 +14,8 @@ from scipy.special import logsumexp
 DNA_BASES = ['A', 'T', 'G', 'C']
 FLOAT_EPSILON = 1e-16
 LN_1_M_EXP_THRESHOLD = -np.log(2.)
-LN_1_DIV_4 =np.log(np.divide(1, 4))
-LN_3_DIV_4 =np.log(np.divide(3, 4))
+LN_1_DIV_4 = np.log(np.divide(1, 4))
+LN_3_DIV_4 = np.log(np.divide(3, 4))
 
 # CIGAR String constants
 BAM_CMATCH = 0  # M
@@ -98,20 +98,20 @@ def umi_collapse_sorted_file(input_bam_filename: str,
                             temp_bam_forward.close()
                             temp_bam_reverse.close()
                             call_family_consensus(
-                                current_family_forward_size = current_family_forward_size,
-                                current_family_reverse_size = current_family_reverse_size,
-                                current_family_size = current_family_size,
-                                debug = debug,
-                                debug_family_ids = debug_family_ids,
-                                debug_family_location = debug_family_location,
-                                family_file_prefix = family_file_prefix,
-                                family_index = family_index,
-                                input_bam = input_bam,
-                                output_bam = output_bam,
-                                synthetic_read_prefix = synthetic_read_prefix,
-                                temp_bam_filename_forward = temp_bam_filename_forward,
-                                temp_bam_filename_reverse = temp_bam_filename_reverse,
-                                calling_method = calling_method,
+                                current_family_forward_size=current_family_forward_size,
+                                current_family_reverse_size=current_family_reverse_size,
+                                current_family_size=current_family_size,
+                                debug=debug,
+                                debug_family_ids=debug_family_ids,
+                                debug_family_location=debug_family_location,
+                                family_file_prefix=family_file_prefix,
+                                family_index=family_index,
+                                input_bam=input_bam,
+                                output_bam=output_bam,
+                                synthetic_read_prefix=synthetic_read_prefix,
+                                temp_bam_filename_forward=temp_bam_filename_forward,
+                                temp_bam_filename_reverse=temp_bam_filename_reverse,
+                                calling_method=calling_method,
                             )
                             # Cleanup
                             os.remove(temp_bam_filename_forward)
@@ -326,7 +326,7 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
     # Call the base with max p
     call_i = int(np.argmax(log_p_norm))
 
-    if int( np.sum( np.abs( np.subtract(log_p_norm, log_p_norm[call_i]) ) < FLOAT_EPSILON) ) == 1:
+    if int(np.sum(np.abs(np.subtract(log_p_norm, log_p_norm[call_i])) < FLOAT_EPSILON)) == 1:
         base_call = DNA_BASES[call_i]
 
         # Probability of incorrect call is sum of p that another base is correct
@@ -411,8 +411,8 @@ def call_consensus(family_bam: str,
                    temp_sorted_filename: str = None,
                    max_depth: int = 10000,
                    debug: bool = False,
-                   debug_keep_families: bool=False,
-                   calling_method:str = 'posterior') -> pysam.AlignedSegment:
+                   debug_keep_families: bool = False,
+                   calling_method: str = 'posterior') -> pysam.AlignedSegment:
     """
     call a consensus read from a read family file
     :param family_bam: name of file containing the family reads
@@ -469,9 +469,9 @@ def call_consensus(family_bam: str,
             query_qualities = pileup_column.get_query_qualities()
 
             called_base, called_quality, called_cigar = call_base(
-                query_sequences = query_sequences,
-                query_qualities = query_qualities,
-                calling_method = calling_method)
+                query_sequences=query_sequences,
+                query_qualities=query_qualities,
+                calling_method=calling_method)
 
             if called_cigar == BAM_CREF_SKIP:
                 # No base could be called and we have a single skip

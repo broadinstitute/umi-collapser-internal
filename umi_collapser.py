@@ -7,6 +7,8 @@ import tempfile
 from collections import Counter
 from itertools import compress
 from shutil import copyfile
+import numpy as np
+from scipy.special import logsumexp
 
 # CIGAR String constants
 BAM_CMATCH = 0  # M
@@ -209,8 +211,65 @@ def call_base(query_sequences: List[str], query_qualities: List[int], method="ma
         raise Exception("Unknown method for base calling")
 
 
+def get_log_prob_compl(ln_prob):
+    """Get the natural base log complement"""
+    ## TODO: Use threshold based method
+    ln1 = np.log(1)
+    return ln1 + np.log(1 - np.exp(ln_prob - ln1))
+
+
 def call_base_posterior(query_sequences: List[str], query_qualities: List[int]) -> List[str]:
-    pass
+
+    assert len(query_sequences) == len(query_qualities)
+
+    # k is the size of the pileup here
+    k = len(query_sequences)
+
+    # array of possible bases
+    bases = ['A', 'T', 'G', 'C']
+
+    # Calculate p of each base being correct or wrong in log_e
+    q_i = np.array(query_qualities)
+    ln_p_error = np.log(np.divide(np.power(10, np.divide(q_i, -10)), 3))
+    ln_p_correct = get_log_prob_compl(ln_p_error)
+
+    # Construct arrays to manipulate all data togehter
+    p_d_base = np.empty([k, 4])
+    p_d_not_base = np.empty([k, 4])
+    for j in range(len(bases)):
+        for i in range(k):
+            if query_sequences[i] == bases[j]:
+                p_d_base[i, j] = ln_p_correct[i]
+                p_d_not_base[i, j] = ln_p_error[i]
+            else:
+                p_d_base[i, j] = ln_p_error[i]
+                p_d_not_base[i, j] = ln_p_correct[i]
+
+    # Calculate p of data given each underlying base
+    p_d_base_sum = np.sum(p_d_base, 0)
+    p_d_not_base_sum = np.sum(p_d_not_base, 0)
+
+    # Calculate Posterior
+    nominator = p_d_base_sum + np.log(np.divide(1, 4))
+    denominator = logsumexp(np.vstack((nominator, np.full([1, 4], np.log(np.divide(3, 4))))), 0)
+    log_p = nominator - denominator
+    log_p_norm = log_p - logsumexp(log_p)
+
+    # Call the base with max p
+    call_i = np.argmax(log_p_norm)[0]
+    basecall = bases[call_i]
+
+    # Probability of incorrect call is sum of p that another base is correct
+    log_p_incorrect_call = logsumexp(log_p_norm[np.arange(len(log_p_norm)) != call_i])
+
+    # Convert log_e probabily of error to Phred scale
+    quality_score = int(np.multiply(-10, np.log10(np.exp(log_p_incorrect_call))))
+
+    # Cap quality score
+    quality_score = (quality_score, 0)[quality_score < 0]
+    quality_score = (quality_score, 40)[quality_score > 40]
+
+    return [basecall, chr(quality_score + 33), BAM_CMATCH]
 
 def call_base_majority_vote(query_sequences: List[str], query_qualities: List[int]) -> List[str]:
     """

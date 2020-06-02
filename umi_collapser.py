@@ -13,7 +13,7 @@ from scipy.special import logsumexp
 # constants
 DNA_BASES = ['A', 'T', 'G', 'C']
 FLOAT_EPSILON = 1e-16
-
+LN_1_M_EXP_THRESHOLD = -np.log(2.)
 
 # CIGAR String constants
 BAM_CMATCH = 0  # M
@@ -132,7 +132,8 @@ def umi_collapse_sorted_file(input_bam_filename: str,
 # TODO: Add type hinting
 def call_family_consensus(current_family_forward_size, current_family_reverse_size, current_family_size, debug,
                           debug_family_ids, debug_family_location, family_file_prefix, family_index, input_bam,
-                          output_bam, synthetic_read_prefix, temp_bam_filename_forward, temp_bam_filename_reverse) -> None:
+                          output_bam, synthetic_read_prefix, temp_bam_filename_forward,
+                          temp_bam_filename_reverse) -> None:
     """
     Call consensus read for family identifying if collapse is required and
     selecting if forward or reverse orientation should be used
@@ -182,6 +183,7 @@ def call_family_consensus(current_family_forward_size, current_family_reverse_si
                               input_bam, new_read, temp_bam_filename_forward,
                               temp_bam_filename_reverse)
 
+
 # TODO: Add type hinting
 def save_family_debug(debug_family_location, family_file_prefix, family_index, input_bam, new_read,
                       temp_bam_filename_forward, temp_bam_filename_reverse) -> None:
@@ -207,6 +209,7 @@ def save_family_debug(debug_family_location, family_file_prefix, family_index, i
                              "wb", header=input_bam.header) as collapsed_read_bam:
         collapsed_read_bam.write(new_read)
 
+
 def call_base(query_sequences: List[str], query_qualities: List[int], method="posterior") -> List[str]:
     if method == "majority":
         return call_base_majority_vote(query_sequences, query_qualities)
@@ -221,7 +224,6 @@ def get_log_prob_compl(ln_prob):
     ln1 = np.log(1)
     return ln1 + np.log(1 - np.exp(ln_prob - ln1))
 
-LN_1_M_EXP_THRESHOLD = -np.log(2.)
 
 def get_log_prob_compl_stable(ln_prob):
     """Get the natural base log complement"""
@@ -233,7 +235,6 @@ def get_log_prob_compl_stable(ln_prob):
 
 
 def call_base_posterior(query_sequences: List[str], query_qualities: List[int], max_quality_score=40) -> List[str]:
-
     assert len(query_sequences) == len(query_qualities)
 
     if len(query_sequences) == 0:
@@ -251,6 +252,7 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
     p_d_base = np.empty([k, 4])
     p_d_not_base = np.empty([k, 4])
     for j in range(len(DNA_BASES)):
+        # TODO: np.full is not happy with a str for input
         v = query_sequences == np.full([1, len(query_sequences)], DNA_BASES[j])
         p_d_base[:, j] = np.where(v, ln_p_correct, ln_p_error)
         p_d_not_base[:, j] = np.where(v, ln_p_error, ln_p_correct)

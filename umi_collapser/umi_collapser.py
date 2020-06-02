@@ -338,11 +338,12 @@ def call_base_posterior(query_sequences: Tuple[str], query_qualities: Tuple[int]
         log_p_incorrect_call = logsumexp(log_p_norm[np.arange(len(log_p_norm)) != call_i])
 
         # Convert log_e probability of error to Phred scale
-        quality_score = int(np.multiply(-10, np.log10(np.exp(log_p_incorrect_call))))
+        quality_score = np.multiply(-10, np.log10(np.exp(log_p_incorrect_call)))
 
         # Cap quality score
         quality_score = (quality_score, 0)[quality_score < 0]
         quality_score = (quality_score, max_quality_score)[quality_score > max_quality_score]
+        quality_score = int(quality_score)
 
         cigar_value = BAM_CMATCH
     else:

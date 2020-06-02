@@ -202,7 +202,7 @@ def save_family_debug(debug_family_location, family_file_prefix, family_index, i
                              "wb", header=input_bam.header) as collapsed_read_bam:
         collapsed_read_bam.write(new_read)
 
-def call_base(query_sequences: List[str], query_qualities: List[int], method="majority") -> List[str]:
+def call_base(query_sequences: List[str], query_qualities: List[int], method="posterior") -> List[str]:
     if method == "majority":
         return call_base_majority_vote(query_sequences, query_qualities)
     elif method == "posterior":
@@ -213,12 +213,21 @@ def call_base(query_sequences: List[str], query_qualities: List[int], method="ma
 
 def get_log_prob_compl(ln_prob):
     """Get the natural base log complement"""
-    ## TODO: Use threshold based method
     ln1 = np.log(1)
     return ln1 + np.log(1 - np.exp(ln_prob - ln1))
 
+LN_1_M_EXP_THRESHOLD = -np.log(2.)
 
-def call_base_posterior(query_sequences: List[str], query_qualities: List[int]) -> List[str]:
+def get_log_prob_compl_stable(ln_prob):
+    """Get the natural base log complement"""
+    return np.where(
+        ln_prob > LN_1_M_EXP_THRESHOLD,
+        np.log(-np.expm1(ln_prob)),
+        np.log1p(-np.exp(ln_prob))
+    )
+
+
+def call_base_posterior(query_sequences: List[str], query_qualities: List[int], max_quality_score = 40) -> List[str]:
 
     assert len(query_sequences) == len(query_qualities)
 
@@ -231,9 +240,9 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int]) 
     # Calculate p of each base being correct or wrong in log_e
     q_i = np.array(query_qualities)
     ln_p_error = np.log(np.divide(np.power(10, np.divide(q_i, -10)), 3))
-    ln_p_correct = get_log_prob_compl(ln_p_error)
+    ln_p_correct = get_log_prob_compl_stable(ln_p_error)
 
-    # Construct arrays to manipulate all data togehter
+    # Construct arrays to manipulate all data together
     p_d_base = np.empty([k, 4])
     p_d_not_base = np.empty([k, 4])
     for j in range(len(bases)):
@@ -272,20 +281,28 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int]) 
 
     # Call the base with max p
     call_i = np.argmax(log_p_norm)
-    basecall = bases[call_i]
 
-    # Probability of incorrect call is sum of p that another base is correct
-    log_p_incorrect_call = logsumexp(log_p_norm[np.arange(len(log_p_norm)) != call_i])
+    if np.sum(log_p_norm == log_p_norm[call_i]) == 1:
+        basecall = bases[call_i]
 
-    # Convert log_e probability of error to Phred scale
-    quality_score = int(np.multiply(-10, np.log10(np.exp(log_p_incorrect_call))))
+        # Probability of incorrect call is sum of p that another base is correct
+        log_p_incorrect_call = logsumexp(log_p_norm[np.arange(len(log_p_norm)) != call_i])
 
-    # Cap quality score
-    quality_score = (quality_score, 0)[quality_score < 0]
-    quality_score = (quality_score, 40)[quality_score > 40]
+        # Convert log_e probability of error to Phred scale
+        quality_score = int(np.multiply(-10, np.log10(np.exp(log_p_incorrect_call))))
+
+        # Cap quality score
+        quality_score = (quality_score, 0)[quality_score < 0]
+        quality_score = (quality_score, max_quality_score)[quality_score > max_quality_score]
+
+        cigar_value = BAM_CMATCH
+    else:
+        # There is a tie, don't call base
+        basecall = 'N'
+        quality_score = 0
+        cigar_value = BAM_CMATCH
 
     return [basecall, chr(quality_score + 33), BAM_CMATCH]
-    #return [basecall, quality_score, BAM_CMATCH]
 
 
 def call_base_majority_vote(query_sequences: List[str], query_qualities: List[int]) -> List[str]:

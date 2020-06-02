@@ -222,15 +222,14 @@ def call_family_consensus(
                               temp_bam_filename_reverse)
 
 
-# TODO: Add type hinting
 def save_family_debug(
-        debug_family_location,
-        family_file_prefix,
-        family_index,
-        input_bam,
-        new_read,
-        temp_bam_filename_forward,
-        temp_bam_filename_reverse) -> None:
+        debug_family_location: str,
+        family_file_prefix: str,
+        family_index: int,
+        input_bam: pysam.AlignmentFile,
+        new_read: pysam.AlignedSegment,
+        temp_bam_filename_forward: str,
+        temp_bam_filename_reverse: str) -> None:
     """
     Save debug information for family
     :param debug_family_location: location where to save the files

@@ -3,7 +3,6 @@ import functools
 from typing import (Iterator, Iterable, Optional)
 
 
-
 def get_tag_or_default(
         alignment: pysam.AlignedSegment, tag_key: str, default: Optional[str] = None
 ) -> Optional[str]:

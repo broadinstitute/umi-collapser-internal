@@ -170,7 +170,6 @@ def call_family_consensus(
         temp_bam_filename_forward: str,
         temp_bam_filename_reverse: str,
         calling_method: str,
-
 ) -> None:
     """
     Call consensus read for family identifying if collapse is required and

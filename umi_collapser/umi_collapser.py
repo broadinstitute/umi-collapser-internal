@@ -256,7 +256,7 @@ def call_base(query_sequences: List[str], query_qualities: List[int], calling_me
     if calling_method == "majority":
         return call_base_majority_vote(query_sequences, query_qualities)
     elif calling_method == "posterior":
-        return call_base_posterior(query_qualities, query_qualities)
+        return call_base_posterior(query_sequences, query_qualities)
     else:
         raise Exception("Unknown method for base calling")
 
@@ -294,7 +294,8 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
     p_d_base = np.empty([k, 4])
     p_d_not_base = np.empty([k, 4])
     for j in range(len(DNA_BASES)):
-        v = query_sequences == [DNA_BASES[j]] * len(query_sequences)
+        #v = [x == y for (x, y) in zip(query_sequences, [DNA_BASES[j]] * len(query_sequences))]
+        v = (query_sequences == np.full([1, len(query_sequences)], DNA_BASES[j]))
         p_d_base[:, j] = np.where(v, ln_p_correct, ln_p_error)
         p_d_not_base[:, j] = np.where(v, ln_p_error, ln_p_correct)
 
@@ -327,7 +328,7 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int], 
     # Call the base with max p
     call_i = int(np.argmax(log_p_norm))
 
-    if np.sum(np.subtract(log_p_norm, log_p_norm[call_i]) < FLOAT_EPSILON) == 1:
+    if int( np.sum( np.abs( np.subtract(log_p_norm, log_p_norm[call_i]) ) < FLOAT_EPSILON) ) == 1:
         base_call = DNA_BASES[call_i]
 
         # Probability of incorrect call is sum of p that another base is correct

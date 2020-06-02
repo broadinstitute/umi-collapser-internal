@@ -7,15 +7,16 @@ import umi_collapser
 #                               output="/Users/barkasn/Desktop/debug/family_87617_F_consensus.bam")
 
 def debug_single_family(family_bam: pysam.AlignmentFile,
-                        output:str ="consensus_read.bam",
-                        temp_sorted_filename:str ="temp.bam",
-                        calling_method:str = "posterior"
+                        output: str = "consensus_read.bam",
+                        temp_sorted_filename: str = "temp.bam",
+                        calling_method: str = "posterior",
                         ):
     """
     Helper function to process a single family bam for debugging purposes
     :param family_bam: input family bam
     :param output: output file with single consensus read
     :param temp_sorted_filename: temporary file for sorting input family
+    :param calling_method: method for calling individual bases
     :return: None
     """
     nr = umi_collapser.call_consensus(family_bam=family_bam,

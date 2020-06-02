@@ -251,18 +251,33 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int]) 
 
     # Calculate Posterior
     nominator = p_d_base_sum + np.log(np.divide(1, 4))
-    denominator = logsumexp(np.vstack((nominator, np.full([1, 4], np.log(np.divide(3, 4))))), 0)
+    denominator = logsumexp(
+        np.vstack(
+            (
+                nominator,
+                np.add(
+                    p_d_not_base_sum,
+                    np.full(
+                        [1, 4],
+                        np.log(np.divide(3, 4))
+                    )
+                )
+            )
+        ),
+        0
+    )
+
     log_p = nominator - denominator
     log_p_norm = log_p - logsumexp(log_p)
 
     # Call the base with max p
-    call_i = np.argmax(log_p_norm)[0]
+    call_i = np.argmax(log_p_norm)
     basecall = bases[call_i]
 
     # Probability of incorrect call is sum of p that another base is correct
     log_p_incorrect_call = logsumexp(log_p_norm[np.arange(len(log_p_norm)) != call_i])
 
-    # Convert log_e probabily of error to Phred scale
+    # Convert log_e probability of error to Phred scale
     quality_score = int(np.multiply(-10, np.log10(np.exp(log_p_incorrect_call))))
 
     # Cap quality score
@@ -270,6 +285,8 @@ def call_base_posterior(query_sequences: List[str], query_qualities: List[int]) 
     quality_score = (quality_score, 40)[quality_score > 40]
 
     return [basecall, chr(quality_score + 33), BAM_CMATCH]
+    #return [basecall, quality_score, BAM_CMATCH]
+
 
 def call_base_majority_vote(query_sequences: List[str], query_qualities: List[int]) -> List[str]:
     """

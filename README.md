@@ -43,3 +43,10 @@ optional arguments:
   --debug               flag for debug mode
 
 ```
+
+## Ubuntu Installation 
+```
+sudo apt-get install build-essential
+sudo apt-get install libbz2-dev libcurl4-openssl-dev libssl-dev
+python3 setup.py install
+```

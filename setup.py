@@ -8,6 +8,7 @@ setup(
     version="0.0.1",
     author="Nikolas Barkas",
     author_email="nbarkas@broadinstitute.org",
+    packages=["umi_collapser"],
     description="scRNA-seq UMI read collapser",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -24,7 +25,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            '`umi_collapser`=umi_collapser.__main__:main'
+            'umi_collapser = umi_collapser.__main__:main'
         ]
     }
 )

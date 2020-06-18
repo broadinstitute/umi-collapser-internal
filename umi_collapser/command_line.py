@@ -42,7 +42,7 @@ def main() -> int:
     umi_collapser.do_umi_collapse(input_file=args.input_bam,
                                output_file=args.output_bam,
                                verbose=args.verbose,
-                               input_is_sorted=args.verbose,
+                               input_is_sorted=args.input_is_sorted,
                                cell_barcode_tag=args.cell_barcode_tag,
                                molecular_barcode_tag=args.molecular_barcode_tag,
                                gene_tag=args.gene_tag,

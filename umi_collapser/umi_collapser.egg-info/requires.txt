@@ -1,0 +1,4 @@
+pysam
+tqdm
+numpy
+scipy

@@ -1,0 +1,8 @@
+README.md
+setup.py
+umi_collapser.egg-info/PKG-INFO
+umi_collapser.egg-info/SOURCES.txt
+umi_collapser.egg-info/dependency_links.txt
+umi_collapser.egg-info/entry_points.txt
+umi_collapser.egg-info/requires.txt
+umi_collapser.egg-info/top_level.txt

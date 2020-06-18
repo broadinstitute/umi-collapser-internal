@@ -1,0 +1,3 @@
+[console_scripts]
+`umi_collapser` = umi_collapser.__main__:main
+

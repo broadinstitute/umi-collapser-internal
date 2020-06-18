@@ -1,0 +1,57 @@
+Metadata-Version: 2.1
+Name: umi-collapser
+Version: 0.0.1
+Summary: scRNA-seq UMI read collapser
+Home-page: https://github.com/broadinstitute/umi_collapser-internal
+Author: Nikolas Barkas
+Author-email: nbarkas@broadinstitute.org
+License: UNKNOWN
+Description: # Umi-collapser
+        ## Description
+        Umi-collapser identifies families of molecules in scRNA-seq experiments
+        originating from the same original molecule and merges them into a single output 
+        read, calling consensus bases for any bases covered by multiple reads
+         
+        ## Consensus base calling
+        Two methods of consensus bases calling are currently supported: calculation of
+        the posterior probabilities for each base and simple majority voting.
+         
+        ## Inputs and Output
+        Umi-collapser accepts a BAM files with reads tagged by cellular and molecular 
+        barcodes and outputs a new BAM file where reads from the same family are collapsed.
+        Reads that do not form families of more than one are output with no modification.
+        
+        ## Example Usage
+        ```
+        $ umi-collapser --help
+        usage: umi-collapser [-h] -i INPUT_BAM -o OUTPUT_BAM [--input_is_sorted]
+                           [--cell_barcode_tag CELL_BARCODE_TAG]
+                           [--molecular_barcode_tag MOLECULAR_BARCODE_TAG]
+                           [--gene_tag GENE_TAG]
+                           [--calling_method {posterior,majority}] [--verbose]
+                           [--debug]
+        
+        Collapse reads from the same Gene, UMI, Cell Barcode Triplet
+        
+        optional arguments:
+          -h, --help            show this help message and exit
+          -i INPUT_BAM, --input_bam INPUT_BAM
+                                input bamfile
+          -o OUTPUT_BAM, --output_bam OUTPUT_BAM
+                                output bamfile
+          --input_is_sorted     flag indicating if the input bam is sorted by tags
+          --cell_barcode_tag CELL_BARCODE_TAG
+                                tag name for the cell barcode
+          --molecular_barcode_tag MOLECULAR_BARCODE_TAG
+                                tag name for the molecular barcode
+          --gene_tag GENE_TAG   tag name for the gene tag
+          --calling_method {posterior,majority}
+                                method to use to call individual bases
+          --verbose             verbosity level
+          --debug               flag for debug mode
+        
+        ```
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown

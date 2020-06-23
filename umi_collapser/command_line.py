@@ -1,8 +1,9 @@
 import argparse
-import umi_collapser
+from umi_collapser import collapser_functions
+
 
 def main() -> int:
-    description = "Collapse reads from the same Gene, UMI, Cell Barcode Triplet"
+    description = "Collapse reads from thce same Gene, UMI, Cell Barcode Triplet"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-i',
                         "--input_bam",
@@ -39,7 +40,7 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    umi_collapser.do_umi_collapse(input_file=args.input_bam,
+    collapser_functions.do_umi_collapse(input_file=args.input_bam,
                                output_file=args.output_bam,
                                verbose=args.verbose,
                                input_is_sorted=args.input_is_sorted,
@@ -49,3 +50,7 @@ def main() -> int:
                                debug=args.debug,
                                calling_method=args.calling_method)
     return 0
+
+
+if __name__ == "__main__":
+    main()

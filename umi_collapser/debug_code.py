@@ -1,5 +1,5 @@
 import pysam
-import umi_collapser
+import collapser_functions
 
 
 # Example call
@@ -19,10 +19,10 @@ def debug_single_family(family_bam: pysam.AlignmentFile,
     :param calling_method: method for calling individual bases
     :return: None
     """
-    nr = umi_collapser.call_consensus(family_bam=family_bam,
-                                      new_read_name='new_read',
-                                      temp_sorted_filename=temp_sorted_filename,
-                                      calling_method=calling_method)
+    nr = collapser_functions.call_consensus(family_bam=family_bam,
+                                            new_read_name='new_read',
+                                            temp_sorted_filename=temp_sorted_filename,
+                                            calling_method=calling_method)
     with pysam.AlignmentFile(family_bam, "rb") as input_bam:
         with pysam.AlignmentFile(output, "wb", header=input_bam.header) as output_bam:
             output_bam.write(nr)

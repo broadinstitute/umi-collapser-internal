@@ -302,9 +302,9 @@ def call_base_posterior(query_sequences: Tuple[str], query_qualities: Tuple[int]
     p_d_base = np.empty([k, 4])
     p_d_not_base = np.empty([k, 4])
     for j in range(len(DNA_BASES)):
-        v = [ l1 == l2 for l1,l2 in zip(query_sequences, [DNA_BASES[j]] * len(query_sequences))]
-        p_d_base[:, j] = np.where(v, ln_p_correct, ln_p_error)
-        p_d_not_base[:, j] = np.where(v, ln_p_error, ln_p_correct)
+        v = [l1 == l2 for l1, l2 in zip(query_sequences, [DNA_BASES[j]] * len(query_sequences))]
+        p_d_base[:, j] = np.where(v, ln_p_correct, ln_p_error).T
+        p_d_not_base[:, j] = np.where(v, ln_p_error, ln_p_correct).T
 
     # Calculate p of data given each underlying base
     p_d_base_sum = np.sum(p_d_base, 0)
@@ -345,9 +345,12 @@ def call_base_posterior(query_sequences: Tuple[str], query_qualities: Tuple[int]
         quality_score = np.multiply(-10, np.log10(np.exp(log_p_incorrect_call)))
 
         # Cap quality score
-        quality_score = (quality_score, 0)[quality_score < 0]
-        quality_score = (quality_score, max_quality_score)[quality_score > max_quality_score]
-        quality_score = int(quality_score)
+        if quality_score < 0:
+            quality_score = 0
+        elif quality_score > max_quality_score:
+            quality_score = max_quality_score
+        else:
+            quality_score = int(quality_score)
 
         cigar_value = BAM_CMATCH
     else:

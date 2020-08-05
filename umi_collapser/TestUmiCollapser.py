@@ -1,6 +1,7 @@
 import unittest
 import collapser_functions
 
+
 class TestUmiCollapser(unittest.TestCase):
     def test_quality_increase_with_coverage(self):
         # Check that increasing coverage increases quality
@@ -29,6 +30,7 @@ class TestUmiCollapser(unittest.TestCase):
     def test_break_tie(self):
         [base_call, score, cigar] = collapser_functions.call_base_posterior(('A', 'A', 'T', 'T'), (11, 10, 10, 10))
         self.assertEqual(base_call, 'A')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -302,7 +302,7 @@ def call_base_posterior(query_sequences: Tuple[str], query_qualities: Tuple[int]
     p_d_base = np.empty([k, 4])
     p_d_not_base = np.empty([k, 4])
     for j in range(len(DNA_BASES)):
-        v = query_sequences == [DNA_BASES[j]] * len(query_sequences)
+        v = [ l1 == l2 for l1,l2 in zip(query_sequences, [DNA_BASES[j]] * len(query_sequences))]
         p_d_base[:, j] = np.where(v, ln_p_correct, ln_p_error)
         p_d_not_base[:, j] = np.where(v, ln_p_error, ln_p_correct)
 
